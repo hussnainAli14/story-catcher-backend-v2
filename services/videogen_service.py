@@ -45,8 +45,16 @@ class VideoGenService:
             
             result = response.json()
             print(f"Outline generated successfully!")
+            print(f"Outline response keys: {result.keys() if isinstance(result, dict) else 'Not a dict'}")
             
-            return result
+            # Return just the outline object, not the entire response
+            # VideoGen API likely returns something like: {"outline": {...}, "otherStuff": ...}
+            if isinstance(result, dict) and 'outline' in result:
+                print(f"Returning outline object from response")
+                return result['outline']
+            else:
+                print(f"Returning entire result (no 'outline' key found)")
+                return result
             
         except requests.exceptions.Timeout:
             print("VideoGen Prompt-to-Outline request timed out")
@@ -69,6 +77,8 @@ class VideoGenService:
             url = f"{self.base_url_v2}/outline-to-video"
             
             print(f"Generating video from outline...")
+            print(f"Outline type: {type(outline)}")
+            print(f"Outline keys: {outline.keys() if isinstance(outline, dict) else 'Not a dict'}")
             
             payload = {
                 "outline": outline,
@@ -77,6 +87,8 @@ class VideoGenService:
                     "height": 16
                 }
             }
+            
+            print(f"Payload for outline-to-video: {payload}")
             
             response = requests.post(url, headers=self.headers, json=payload, timeout=30)
             
