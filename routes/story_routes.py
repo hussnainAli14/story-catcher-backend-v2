@@ -64,33 +64,17 @@ def submit_answer():
             }), 400
         
         if result.get('is_complete', False):
-            # All questions completed, start storyboard generation
-            formatted_answers = story_service.get_all_answers_for_story_generation(session_id)
-            generated_story = openai_service.generate_story_from_formatted_answers(formatted_answers)
-            
-            # Check if storyboard is still generating
-            if generated_story == "STORYBOARD_GENERATING":
-                return jsonify({
-                    'success': True,
-                    'message': result['message'],
-                    'storyboard': None,
-                    'storyboard_generating': True,
-                    'session_complete': True,
-                    'question_number': 4,
-                    'total_questions': 4
-                })
-            else:
-                # Store the generated storyboard in the session
-                story_service.save_generated_storyboard(session_id, generated_story)
-                
-                return jsonify({
-                    'success': True,
-                    'message': result['message'],
-                    'storyboard': generated_story,
-                    'session_complete': True,
-                    'question_number': 4,
-                    'total_questions': 4
-                })
+            # All questions completed - NO STORYBOARD GENERATION HERE
+            # VideoGen will handle both outline and video generation when user clicks "Generate Video"
+            return jsonify({
+                'success': True,
+                'message': result['message'],
+                'storyboard': None,  # No storyboard yet
+                'storyboard_generating': False,  # Not generating with GPT
+                'session_complete': True,
+                'question_number': 4,
+                'total_questions': 4
+            })
         else:
             # Return next question and reaction from GPT
             return jsonify({
