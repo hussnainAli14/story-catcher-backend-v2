@@ -328,6 +328,61 @@ class StoryService:
             traceback.print_exc()
             return {'success': False, 'error': str(e)}
     
+    def parse_storyboard_to_outline(self, storyboard_text: str) -> dict:
+        """
+        Parse edited storyboard text back into VideoGen outline format
+        
+        Args:
+            storyboard_text: The edited storyboard markdown text
+            
+        Returns:
+            dict: VideoGen outline object with sections
+        """
+        try:
+            import re
+            
+            # Extract all Scene sections using regex
+            # Matches: **Scene 1:** followed by text until next **Scene or end
+            scene_pattern = r'\*\*Scene\s+\d+:\*\*\s*(.*?)(?=\*\*Scene\s+\d+:|\*\*Tip:|\Z)'
+            matches = re.findall(scene_pattern, storyboard_text, re.DOTALL)
+            
+            sections = []
+            for match in matches:
+                # Clean up the text - remove extra whitespace and newlines
+                text = match.strip()
+                if text:
+                    sections.append({'text': text})
+            
+            # If no scenes found, try to extract any text content
+            if not sections:
+                # Remove all markdown formatting and extract plain text
+                lines = storyboard_text.split('\n')
+                content_lines = []
+                for line in lines:
+                    line = line.strip()
+                    # Skip markdown headers, tips, and empty lines
+                    if line and not line.startswith('**Storyboard:') and not line.startswith('*This is') and not line.startswith('💡'):
+                        # Remove markdown formatting
+                        line = line.replace('**', '').replace('*', '')
+                        content_lines.append(line)
+                
+                if content_lines:
+                    # Combine into sections (split by double newlines if present)
+                    full_text = '\n'.join(content_lines)
+                    paragraphs = [p.strip() for p in full_text.split('\n\n') if p.strip()]
+                    sections = [{'text': p} for p in paragraphs]
+            
+            # Ensure we have at least one section
+            if not sections:
+                sections = [{'text': storyboard_text}]
+            
+            return {'sections': sections}
+            
+        except Exception as e:
+            print(f"Error parsing storyboard: {str(e)}")
+            # Fallback: treat entire text as one section
+            return {'sections': [{'text': storyboard_text}]}
+    
     def format_outline_as_storyboard(self, outline: dict) -> str:
         """
         Format VideoGen outline as a readable storyboard for display in chat

@@ -210,6 +210,65 @@ def get_session_status(session_id):
             'error': str(e)
         }), 500
 
+@story_bp.route('/video/generate-with-edited-storyboard', methods=['POST'])
+def generate_video_with_edited_storyboard():
+    """
+    Generate video from EDITED storyboard text
+    Parses the edited markdown back to outline format and generates video
+    """
+    try:
+        data = request.get_json()
+        session_id = data.get('session_id')
+        edited_storyboard = data.get('storyboard')
+        email = data.get('email', '')
+        
+        if not session_id:
+            return jsonify({
+                'success': False,
+                'message': 'Session ID is required'
+            }), 400
+        
+        if not edited_storyboard:
+            return jsonify({
+                'success': False,
+                'message': 'Storyboard text is required'
+            }), 400
+        
+        # Store email if provided
+        if email:
+            story_service.save_user_email(session_id, email)
+        
+        # Parse the edited storyboard text back to outline format
+        outline = story_service.parse_storyboard_to_outline(edited_storyboard)
+        print(f"Parsed edited storyboard into outline with {len(outline.get('sections', []))} sections")
+        
+        # Generate video from the parsed outline
+        try:
+            api_file_id = videogen_service.generate_video_from_outline(outline)
+            video_url = f"videogen://{api_file_id}"
+            
+            return jsonify({
+                'success': True,
+                'video_url': video_url,
+                'outline': outline,
+                'message': 'Video generation started with edited storyboard'
+            })
+        except Exception as e:
+            print(f"Error generating video from edited storyboard: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 500
+    
+    except Exception as e:
+        print(f"Error in generate_video_with_edited_storyboard: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @story_bp.route('/video/generate-with-videogen-outline', methods=['POST'])
 def generate_video_with_videogen_outline():
     """
