@@ -225,52 +225,84 @@ class VideoGenService:
         for line in lines:
             line = line.strip()
             
-            # Scene header
-            if line.startswith('**Scene') and ':' in line:
+            # Scene header - support multiple formats
+            if (line.startswith('**Scene') or line.startswith('Scene')) and ':' in line:
                 if current_scene:  # Save previous scene
                     scenes.append(current_scene)
                 
-                # Extract scene name
+                # Extract scene name - support multiple formats
                 scene_name_match = re.search(r'(\d+): "([^"]+)"', line)
+                if not scene_name_match:
+                    scene_name_match = re.search(r'(\d+): ([^\n]+)', line)
+                
                 if scene_name_match:
                     current_scene = {
                         'number': scene_name_match.group(1),
-                        'name': scene_name_match.group(2),
+                        'name': scene_name_match.group(2).strip(),
+                        'text_overlay': '',
                         'visual': '',
                         'setting': '',
                         'action': '',
-                        'mood': ''
+                        'mood': '',
+                        'sound': ''
                     }
             
-            # Extract scene details
+            # Extract scene details - prioritize text overlays for narrative
             elif current_scene:
-                if line.startswith('• **Visual**:'):
+                # Text overlay is the PRIMARY narrative source
+                if line.startswith('Text overlay:') or line.startswith('**Text overlay:**'):
+                    overlay_text = line.replace('Text overlay:', '').replace('**Text overlay:**', '').strip()
+                    # Remove quotes if present
+                    overlay_text = overlay_text.strip('"').strip()
+                    current_scene['text_overlay'] = overlay_text
+                elif line.startswith('Visual:') or line.startswith('**Visual:**'):
+                    current_scene['visual'] = line.replace('Visual:', '').replace('**Visual:**', '').strip()
+                elif line.startswith('• **Visual**:'):
                     current_scene['visual'] = line.replace('• **Visual**:', '').strip()
-                elif line.startswith('• **Setting**:'):
-                    current_scene['setting'] = line.replace('• **Setting**:', '').strip()
-                elif line.startswith('• **Action**:'):
-                    current_scene['action'] = line.replace('• **Action**:', '').strip()
-                elif line.startswith('• **Mood**:'):
-                    current_scene['mood'] = line.replace('• **Mood**:', '').strip()
+                elif line.startswith('• **Setting**:') or line.startswith('Setting:'):
+                    current_scene['setting'] = line.replace('• **Setting**:', '').replace('Setting:', '').strip()
+                elif line.startswith('• **Action**:') or line.startswith('Action:'):
+                    current_scene['action'] = line.replace('• **Action**:', '').replace('Action:', '').strip()
+                elif line.startswith('• **Mood**:') or line.startswith('Mood:'):
+                    current_scene['mood'] = line.replace('• **Mood**:', '').replace('Mood:', '').strip()
+                elif line.startswith('• **Sound**:') or line.startswith('Sound:'):
+                    current_scene['sound'] = line.replace('• **Sound**:', '').replace('Sound:', '').strip()
         
         # Add the last scene
         if current_scene:
             scenes.append(current_scene)
+        
+        # Extract closing message if present
+        closing_message = None
+        for i, line in enumerate(lines):
+            if 'Closing Screen:' in line or '**Closing Screen:**' in line:
+                # Look for the closing message in the next few lines
+                for j in range(i+1, min(i+5, len(lines))):
+                    next_line = lines[j].strip()
+                    if next_line and not next_line.startswith('**') and not next_line.startswith('Text on'):
+                        # Clean quotes and formatting
+                        closing_message = next_line.strip('"').strip()
+                        # Remove author attribution if present
+                        if '—' in closing_message:
+                            closing_message = closing_message.split('—')[0].strip()
+                        break
+                break
         
         # If no structured content found, create a simple narrative
         if not scenes:
             return self._create_simple_narrative(storyboard)
         
         # Create a complete narrative that fits within 1-minute constraint
-        return self._create_complete_narrative(scenes, title)
+        return self._create_complete_narrative(scenes, title, closing_message)
     
-    def _create_complete_narrative(self, scenes: list, title: str) -> str:
+    def _create_complete_narrative(self, scenes: list, title: str, closing_message: str = None) -> str:
         """
         Create a complete narrative that tells the full story within 1-minute constraint
         
         Args:
             scenes (list): List of scene dictionaries
             title (str): Story title (cleaned)
+            closing_message (str): Optional closing message from storyboard
             
         Returns:
             str: Complete narrative script optimized for 1-minute duration
@@ -281,15 +313,15 @@ class VideoGenService:
         # Create different narrative strategies based on number of scenes
         if len(scenes) <= 3:
             # Few scenes - can include more detail per scene
-            return self._create_detailed_narrative(scenes, title, target_words)
+            return self._create_detailed_narrative(scenes, title, target_words, closing_message)
         elif len(scenes) <= 6:
             # Medium number of scenes - balanced approach
-            return self._create_balanced_narrative(scenes, title, target_words)
+            return self._create_balanced_narrative(scenes, title, target_words, closing_message)
         else:
             # Many scenes - focus on key story beats
-            return self._create_summary_narrative(scenes, title, target_words)
+            return self._create_summary_narrative(scenes, title, target_words, closing_message)
     
-    def _create_detailed_narrative(self, scenes: list, title: str, target_words: int) -> str:
+    def _create_detailed_narrative(self, scenes: list, title: str, target_words: int, closing_message: str = None) -> str:
         """Create detailed narrative for stories with few scenes - focus on story content"""
         script_parts = []
         
@@ -302,13 +334,18 @@ class VideoGenService:
         # Include all scenes with story-focused detail
         for i, scene in enumerate(scenes):
             scene_narrative = self._create_scene_narrative(scene, i + 1, len(scenes))
-            script_parts.append(scene_narrative)
+            if scene_narrative:
+                script_parts.append(scene_narrative)
         
-        # Closing - focus on the lesson learned
-        script_parts.append("This experience taught me that challenges can become opportunities for growth.")
+        # Closing - use custom message if provided, otherwise generic
+        if closing_message and len(closing_message.strip()) > 0:
+            script_parts.append(closing_message)
+        else:
+            script_parts.append("This experience taught me that challenges can become opportunities for growth.")
         
         # Join and clean
-        final_script = self._convert_to_first_person("\n".join(script_parts))
+        final_script = " ".join(script_parts)
+        final_script = self._convert_to_first_person(final_script)
         final_script = self._basic_clean_text(final_script)
         
         # Check word count and adjust if needed
@@ -318,7 +355,7 @@ class VideoGenService:
         
         return final_script
     
-    def _create_balanced_narrative(self, scenes: list, title: str, target_words: int) -> str:
+    def _create_balanced_narrative(self, scenes: list, title: str, target_words: int, closing_message: str = None) -> str:
         """Create balanced narrative for stories with medium number of scenes"""
         script_parts = []
         
@@ -333,13 +370,18 @@ class VideoGenService:
         
         for i, scene in enumerate(key_scenes):
             scene_narrative = self._create_scene_narrative(scene, i + 1, len(key_scenes))
-            script_parts.append(scene_narrative)
+            if scene_narrative:
+                script_parts.append(scene_narrative)
         
-        # Closing
-        script_parts.append("This experience taught me that challenges can become opportunities for growth.")
+        # Closing - use custom message if provided
+        if closing_message and len(closing_message.strip()) > 0:
+            script_parts.append(closing_message)
+        else:
+            script_parts.append("This experience taught me that challenges can become opportunities for growth.")
         
         # Join and clean
-        final_script = self._convert_to_first_person("\n".join(script_parts))
+        final_script = " ".join(script_parts)
+        final_script = self._convert_to_first_person(final_script)
         final_script = self._basic_clean_text(final_script)
         
         # Check word count and adjust if needed
@@ -349,7 +391,7 @@ class VideoGenService:
         
         return final_script
     
-    def _create_summary_narrative(self, scenes: list, title: str, target_words: int) -> str:
+    def _create_summary_narrative(self, scenes: list, title: str, target_words: int, closing_message: str = None) -> str:
         """Create summary narrative for stories with many scenes"""
         script_parts = []
         
@@ -364,24 +406,31 @@ class VideoGenService:
             # Beginning
             if scenes[0]:
                 scene_narrative = self._create_scene_narrative(scenes[0], 1, 3)
-                script_parts.append(scene_narrative)
+                if scene_narrative:
+                    script_parts.append(scene_narrative)
             
             # Middle (pick a key scene)
             middle_index = len(scenes) // 2
             if scenes[middle_index]:
                 scene_narrative = self._create_scene_narrative(scenes[middle_index], 2, 3)
-                script_parts.append(scene_narrative)
+                if scene_narrative:
+                    script_parts.append(scene_narrative)
             
             # End
             if scenes[-1]:
                 scene_narrative = self._create_scene_narrative(scenes[-1], 3, 3)
-                script_parts.append(scene_narrative)
+                if scene_narrative:
+                    script_parts.append(scene_narrative)
         
-        # Closing
-        script_parts.append("This experience taught me that challenges can become opportunities for growth.")
+        # Closing - use custom message if provided
+        if closing_message and len(closing_message.strip()) > 0:
+            script_parts.append(closing_message)
+        else:
+            script_parts.append("This experience taught me that challenges can become opportunities for growth.")
         
         # Join and clean
-        final_script = self._convert_to_first_person("\n".join(script_parts))
+        final_script = " ".join(script_parts)
+        final_script = self._convert_to_first_person(final_script)
         final_script = self._basic_clean_text(final_script)
         
         # Check word count and adjust if needed
@@ -419,10 +468,18 @@ class VideoGenService:
         return key_scenes
     
     def _create_scene_narrative(self, scene: dict, scene_num: int, total_scenes: int) -> str:
-        """Create a concise first-person narrative description for a single scene - focus on story, not visuals"""
+        """Create a narrative for a single scene - PRIORITIZE text overlays from storyboard"""
+        
+        # PRIORITY 1: Use text overlay if available - this is the actual story narrative!
+        if scene.get('text_overlay') and len(scene['text_overlay'].strip()) > 0:
+            text_overlay = scene['text_overlay'].strip()
+            # Clean and return the text overlay - this is already the narrative!
+            return self._clean_text_for_voiceover(text_overlay)
+        
+        # FALLBACK: If no text overlay, construct from other elements
         narrative_parts = []
         
-        # Scene transition in first person - keep it brief
+        # Scene transition in first person
         if scene_num == 1:
             narrative_parts.append("I find myself")
         elif scene_num == total_scenes:
@@ -430,17 +487,16 @@ class VideoGenService:
         else:
             narrative_parts.append("Then")
         
-        # Focus on the story content, not visual descriptions
-        # Skip setting descriptions that are just visual environment
+        # Use action if available
         if scene.get('action'):
             action_desc = self._clean_text_for_voiceover(scene['action'])
             if action_desc and not self._is_visual_description(action_desc):
                 if action_desc.startswith('I '):
-                    narrative_parts.append(f"Here, {action_desc.lower()}")
+                    narrative_parts.append(f"{action_desc}")
                 else:
-                    narrative_parts.append(f"Here, I {action_desc.lower()}")
+                    narrative_parts.append(f"I {action_desc.lower()}")
         
-        # Include mood/emotion if it's story-relevant, not visual
+        # Include mood/emotion if story-relevant
         if scene.get('mood'):
             mood_desc = self._clean_text_for_voiceover(scene['mood'])
             if mood_desc and not self._is_visual_description(mood_desc):
@@ -451,7 +507,7 @@ class VideoGenService:
             narrative_parts.append("in this moment of my story")
         
         # Join parts and ensure clean output
-        scene_text = ". ".join(narrative_parts) + "."
+        scene_text = " ".join(narrative_parts) + "."
         
         # Clean the final text and ensure it's first person
         final_text = self._convert_to_first_person(scene_text)
