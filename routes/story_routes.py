@@ -64,17 +64,46 @@ def submit_answer():
             }), 400
         
         if result.get('is_complete', False):
-            # All questions completed - NO STORYBOARD GENERATION HERE
-            # VideoGen will handle both outline and video generation when user clicks "Generate Video"
-            return jsonify({
-                'success': True,
-                'message': result['message'],
-                'storyboard': None,  # No storyboard yet
-                'storyboard_generating': False,  # Not generating with GPT
-                'session_complete': True,
-                'question_number': 4,
-                'total_questions': 4
-            })
+            # All questions completed - Generate VideoGen outline for display and editing
+            try:
+                # Generate outline using VideoGen
+                outline_result = story_service.generate_videogen_outline_for_display(session_id)
+                
+                if outline_result['success']:
+                    # Format the outline as a readable storyboard for display
+                    formatted_storyboard = story_service.format_outline_as_storyboard(outline_result['outline'])
+                    
+                    return jsonify({
+                        'success': True,
+                        'message': result['message'],
+                        'storyboard': formatted_storyboard,
+                        'session_complete': True,
+                        'question_number': 4,
+                        'total_questions': 4
+                    })
+                else:
+                    # If outline generation fails, return without storyboard
+                    return jsonify({
+                        'success': True,
+                        'message': result['message'],
+                        'storyboard': None,
+                        'session_complete': True,
+                        'question_number': 4,
+                        'total_questions': 4,
+                        'outline_error': outline_result.get('error', 'Failed to generate outline')
+                    })
+            except Exception as e:
+                print(f"Error generating outline after Q4: {str(e)}")
+                # Return without storyboard if outline generation fails
+                return jsonify({
+                    'success': True,
+                    'message': result['message'],
+                    'storyboard': None,
+                    'session_complete': True,
+                    'question_number': 4,
+                    'total_questions': 4,
+                    'outline_error': str(e)
+                })
         else:
             # Return next question and reaction from GPT
             return jsonify({
