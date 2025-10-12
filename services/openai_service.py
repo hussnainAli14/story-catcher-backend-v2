@@ -21,6 +21,43 @@ class OpenAIService:
             self.client = openai.OpenAI(api_key=self.api_key)
         return self.client
     
+    def create_videogen_prompt_from_answers(self, formatted_answers: List[Dict]) -> str:
+        """
+        Create a concise prompt for VideoGen's prompt-to-outline API from user's answers
+        
+        Args:
+            formatted_answers (List[Dict]): List of question-answer pairs
+            
+        Returns:
+            str: A prompt suitable for VideoGen's prompt-to-outline API
+        """
+        # Extract the story from the answers
+        story_parts = []
+        
+        for answer_data in formatted_answers:
+            answer = answer_data.get('answer', '')
+            if answer:
+                story_parts.append(answer)
+        
+        # Join all answers into a cohesive story prompt
+        full_story = " ".join(story_parts)
+        
+        # Create a VideoGen prompt that instructs it to create a visual narrative
+        prompt = f"""Create a short, emotional video narrative about this life-changing moment:
+
+{full_story}
+
+Make it a personal first-person story with:
+- An opening that sets the scene
+- The key moment or challenge
+- The emotional impact
+- The realization or lesson learned
+- How it changed them
+
+Keep it under 1 minute, visual, and emotionally resonant."""
+        
+        return prompt
+    
     def generate_story_from_formatted_answers(self, formatted_answers: List[Dict]) -> str:
         """
         Generate a visual storyboard based on properly formatted answers

@@ -13,6 +13,96 @@ class VideoGenService:
             'Content-Type': 'application/json'
         }
     
+    def generate_outline_from_prompt(self, prompt: str) -> Dict:
+        """
+        Generate a video outline from a prompt using VideoGen's Prompt to Outline API
+        
+        Args:
+            prompt (str): The story prompt/description
+            
+        Returns:
+            Dict: The outline object from VideoGen
+        """
+        try:
+            url = f"{self.base_url}/prompt-to-outline"
+            
+            print(f"Generating outline from prompt...")
+            print(f"Prompt preview: {prompt[:200]}...")
+            
+            payload = {
+                "prompt": prompt
+            }
+            
+            response = requests.post(url, headers=self.headers, json=payload, timeout=30)
+            
+            print(f"VideoGen Prompt-to-Outline Response Status: {response.status_code}")
+            
+            if response.status_code != 200:
+                error_detail = response.text
+                print(f"VideoGen API Error {response.status_code}: {error_detail}")
+                raise Exception(f"VideoGen Prompt-to-Outline API failed with status {response.status_code}: {error_detail}")
+            
+            result = response.json()
+            print(f"Outline generated successfully!")
+            
+            return result
+            
+        except requests.exceptions.Timeout:
+            print("VideoGen Prompt-to-Outline request timed out")
+            raise Exception("Outline generation request timed out")
+        except Exception as e:
+            print(f"Outline generation error: {str(e)}")
+            raise Exception(f"Outline generation error: {str(e)}")
+    
+    def generate_video_from_outline(self, outline: Dict) -> str:
+        """
+        Generate a video from an outline using VideoGen's Outline to Video API
+        
+        Args:
+            outline (Dict): The outline object from prompt-to-outline
+            
+        Returns:
+            str: The apiFileId for the generated video
+        """
+        try:
+            url = f"{self.base_url}/outline-to-video"
+            
+            print(f"Generating video from outline...")
+            
+            payload = {
+                "outline": outline,
+                "aspectRatio": {
+                    "width": 9,
+                    "height": 16
+                }
+            }
+            
+            response = requests.post(url, headers=self.headers, json=payload, timeout=30)
+            
+            print(f"VideoGen Outline-to-Video Response Status: {response.status_code}")
+            
+            if response.status_code != 200:
+                error_detail = response.text
+                print(f"VideoGen API Error {response.status_code}: {error_detail}")
+                raise Exception(f"VideoGen Outline-to-Video API failed with status {response.status_code}: {error_detail}")
+            
+            result = response.json()
+            print(f"VideoGen Outline-to-Video Response: {result}")
+            
+            api_file_id = result.get('apiFileId')
+            
+            if not api_file_id:
+                raise Exception("No apiFileId returned from VideoGen Outline-to-Video API")
+            
+            return api_file_id
+            
+        except requests.exceptions.Timeout:
+            print("VideoGen Outline-to-Video request timed out")
+            raise Exception("Video generation from outline request timed out")
+        except Exception as e:
+            print(f"Video generation from outline error: {str(e)}")
+            raise Exception(f"Video generation from outline error: {str(e)}")
+    
     def generate_video_from_script(self, script: str) -> str:
         """
         Generate a video from a text script using VideoGen API

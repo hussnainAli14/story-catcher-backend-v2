@@ -197,6 +197,56 @@ def get_session_status(session_id):
             'error': str(e)
         }), 500
 
+@story_bp.route('/video/generate-with-videogen-outline', methods=['POST'])
+def generate_video_with_videogen_outline():
+    """
+    Generate video using VideoGen's Prompt-to-Outline and Outline-to-Video APIs
+    This bypasses GPT storyboard generation entirely
+    """
+    try:
+        data = request.get_json()
+        session_id = data.get('session_id')
+        email = data.get('email', '')
+        
+        if not session_id:
+            return jsonify({
+                'success': False,
+                'message': 'Session ID is required'
+            }), 400
+        
+        # Store email if provided
+        if email:
+            story_service.save_user_email(session_id, email)
+        
+        # Generate video using VideoGen outline APIs
+        result = story_service.generate_video_with_videogen_outline(session_id)
+        
+        if not result['success']:
+            return jsonify({
+                'success': False,
+                'error': result.get('error', 'Unknown error')
+            }), 500
+        
+        # Return the outline as the "storyboard" and video URL
+        api_file_id = result['api_file_id']
+        video_url = f"videogen://{api_file_id}"
+        
+        return jsonify({
+            'success': True,
+            'video_url': video_url,
+            'outline': result['outline'],
+            'message': 'Video generation started with VideoGen outline'
+        })
+    
+    except Exception as e:
+        print(f"Error in generate_video_with_videogen_outline: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @story_bp.route('/video/generate-from-session', methods=['POST'])
 def generate_video_from_session():
     """

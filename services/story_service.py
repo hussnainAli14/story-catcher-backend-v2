@@ -277,6 +277,61 @@ class StoryService:
             print(f"Error saving to Supabase: {e}")
             return False
 
+    def generate_video_with_videogen_outline(self, session_id: str) -> dict:
+        """
+        Generate video using VideoGen's Prompt-to-Outline and Outline-to-Video APIs
+        
+        Returns:
+            dict: {
+                'success': bool,
+                'outline': dict (if successful),
+                'api_file_id': str (if successful),
+                'error': str (if failed)
+            }
+        """
+        print(f"Generating video with VideoGen outline APIs for session {session_id}")
+        
+        if session_id not in self.sessions:
+            return {'success': False, 'error': 'Session not found'}
+        
+        session = self.sessions[session_id]
+        
+        if not session.is_complete:
+            return {'success': False, 'error': 'Session is not complete'}
+        
+        try:
+            # Step 1: Create a prompt from the answers
+            formatted_answers = [
+                {'answer': answer}
+                for answer in session.answers
+            ]
+            
+            videogen_prompt = self.openai_service.create_videogen_prompt_from_answers(formatted_answers)
+            print(f"Created VideoGen prompt: {videogen_prompt[:200]}...")
+            
+            # Step 2: Generate outline from prompt
+            outline = self.videogen_service.generate_outline_from_prompt(videogen_prompt)
+            print(f"Generated outline from VideoGen")
+            
+            # Save the outline as the "storyboard" for display
+            session.generated_story = str(outline)
+            
+            # Step 3: Generate video from outline
+            api_file_id = self.videogen_service.generate_video_from_outline(outline)
+            print(f"Generated video from outline, apiFileId: {api_file_id}")
+            
+            return {
+                'success': True,
+                'outline': outline,
+                'api_file_id': api_file_id
+            }
+            
+        except Exception as e:
+            print(f"Error generating video with VideoGen outline: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return {'success': False, 'error': str(e)}
+    
     def clear_session(self, session_id: str) -> bool:
         """Clear session data"""
         if session_id in self.sessions:
