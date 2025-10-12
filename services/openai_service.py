@@ -171,89 +171,87 @@ Create 4-5 scenes total that honor their emotional journey."""
     def _create_storyboard_prompt(self, formatted_answers: str) -> str:
         """Create the prompt for storyboard generation"""
         return f"""
-I've been honored to listen to this person's deeply personal story. Now I need to help them transform their experience into a visual narrative that honors their emotional journey.
+You are creating a deeply personal visual storyboard from someone's life-changing moment. This should feel like a short film or animated narrative that honors their emotional journey.
 
-Here are their responses to our thoughtful questions:
+Here are their responses to our questions:
 
 {formatted_answers}
 
-**My Role as an Empathetic Creative Assistant:**
-I will create a storyboard that:
-- Honors their emotional journey with sensitivity and respect
-- Uses ONLY their specific details and experiences
-- Creates visuals that feel authentic to their story
-- Maintains the emotional truth of their experience
-- Offers creative collaboration rather than imposing my own vision
+**Your Task:**
+Create a storyboard that follows the emotional arc of their story, using ONLY the specific details they shared. Think of this as a short film script with scenes that flow naturally from ordinary moment → crisis/challenge → realization → transformation.
 
-**Storyboard Creation Guidelines:**
-- Focus on their actual experience, not generic scenarios
-- Respect the emotional weight of their story
-- Create scenes that feel true to their experience
-- Use their exact locations, actions, and feelings
-- Honor both the difficulty and the growth in their journey
+**Critical Requirements:**
+1. **Use their exact details**: locations, actions, feelings, specific moments they described
+2. **Tell THEIR story**: Don't add generic elements or assumptions
+3. **Create emotional flow**: Each scene should build on the previous one
+4. **Include text overlays**: First-person narrative quotes from their story
+5. **Add a meaningful title**: Something that captures the essence of their journey
+6. **End with a closing message**: A reflective statement that honors their growth
 
-**Format Requirements:**
+**Format (Follow this EXACTLY):**
 
-**Storyboard: "[Title]" – [Subtitle]**
+🌟 **Storyboard: "[Powerful Title That Captures Their Journey]"**
 
-**Scene 1: "[Scene Name]"**
-• **Visual**: [Detailed visual description based on their answer]
-• **Setting**: [Location and environment details from their story]
-• **Mood**: [Emotional tone and atmosphere from their experience]
-• **Sound**: [Audio suggestions relevant to their scene]
-• **Transition**: [How this scene connects to the next]
+By [Their name if mentioned, otherwise use "A Journey"]
 
-**Scene 2: "[Scene Name]"**
-• **Visual**: [Detailed visual description based on their answer]
-• **Action**: [Key actions and movements from their story]
-• **Mood**: [Emotional tone and atmosphere from their experience]
-• **Sound**: [Audio suggestions relevant to their scene]
-• **Transition**: [How this scene connects to the next]
+**Scene 1: [Scene Name - Usually "The Ordinary Day/Moment Before"]**
+Visual: [Detailed description of the setting and person BEFORE the life-changing moment, using their specific details]
+Text overlay: "[First-person quote from their story, like: 'It was just a normal day...']"
+Mood: [Emotional tone]
+Sound: [Optional audio suggestions]
 
-**Scene 3: "[Scene Name]"**
-• **Visual**: [Detailed visual description based on their answer]
-• **Setting**: [Location and environment details from their story]
-• **Mood**: [Emotional tone and atmosphere from their experience]
-• **Sound**: [Audio suggestions relevant to their scene]
-• **Transition**: [How this scene connects to the next]
+Transition: [How this flows to next scene, e.g., "Slow zoom on feet missing a step. Screen suddenly blurs."]
 
-**Scene 4: "[Scene Name]"**
-• **Visual**: [Detailed visual description based on their answer]
-• **Action**: [Key actions and movements from their story]
-• **Mood**: [Emotional tone and atmosphere from their experience]
-• **Sound**: [Audio suggestions relevant to their scene]
-• **Transition**: [How this scene connects to the next]
+**Scene 2: [Scene Name - Usually "The Crisis/Challenge/Fall"]**
+Visual: [The life-changing moment itself - the accident, decision, event - using THEIR specific details]
+Text overlay: "[First-person quote capturing the moment: 'Then it all went blank...']"
+Sound: [Relevant audio]
+Mood: [Emotional atmosphere]
 
-**Scene 5: "[Scene Name]"**
-• **Visual**: [Detailed visual description based on their answer]
-• **Setting**: [Location and environment details from their story]
-• **Mood**: [Emotional tone and atmosphere from their experience]
-• **Sound**: [Audio suggestions relevant to their scene]
-• **Transition**: [How this scene connects to the next]
+**Scene 3: [Scene Name - Usually "The Awakening/Confusion"]**
+Visual: [Immediate aftermath - their physical/emotional state using their words]
+Text overlay: "[Quote about their confusion/pain/realization in that moment]"
+Mood: [Emotional tone]
 
-**Scene 6: "[Scene Name]"**
-• **Visual**: [Detailed visual description based on their answer]
-• **Action**: [Key actions and movements from their story]
-• **Mood**: [Emotional tone and atmosphere from their experience]
-• **Sound**: [Audio suggestions relevant to their scene]
-• **Transition**: [Conclusion or final transition]
+**Scene 4: [Scene Name - Usually "The Realization"]**
+Visual: [The moment of understanding - perhaps flashback or reflection, using their insights]
+Text overlay: "[Quote about what they learned: 'That day, I realized...']"
+Mood: [Reflective, honest]
 
-**Creative Collaboration Approach:**
-- Use bullet points (•) for each element
-- Keep descriptions vivid but respectful
-- Focus on visual storytelling that honors their specific experience
-- Include authentic details from their story
-- Create emotional resonance through mood and sound
-- Make it suitable for video/animation production
-- Ensure the storyboard feels like a collaborative creation, not an imposed vision
+**Scene 5: [Scene Name - Usually "A New Way Forward/Growth"]**
+Visual: [How they've changed - specific behaviors or perspectives they mentioned]
+Text overlay: "[Quote about their transformation: 'Since then, I've been...']"
+Sound: [Uplifting music begins]
+Mood: [Hopeful, empowered]
 
-**Final Requirements:**
-- Create 4-6 scenes total that tell their complete story
-- Each scene should have Visual, Setting/Action, Mood, Sound, and Transition
-- Use ONLY the person's specific experience details from their answers
-- Make it visually compelling and emotionally resonant based on their real story
-- Format exactly as shown above with proper spacing and bullet points
-- Honor their courage in sharing this story by creating something beautiful and meaningful
+**Closing Screen:**
+Text on black screen:
+"[A powerful one-line reflection that captures their lesson]
+— [Their name or 'A Journey']"
+
+**EXAMPLE FORMAT (based on actual story):**
+
+🌟 Storyboard: "The Fall That Woke Me Up"
+
+**Scene 1: The Ordinary Day**
+Visual: Jasmine walking down a staircase, smiling, eyes fixed on her phone screen. Background is soft and quiet — maybe a home or school.
+Text overlay: "It was just a normal day. I was scrolling on my phone…"
+
+Transition: Slow zoom on feet missing a step. Screen suddenly blurs.
+
+**Scene 2: The Fall**
+Visual: A sudden tumble down the stairs. Everything becomes disoriented — muted sounds, flashes of light, and a fall into silence.
+Text overlay: "Then it all went blank. I didn't even know what happened."
+Sound: Dull thud, fading heartbeat, breath catching.
+
+[...and so on]
+
+**Remember:**
+- Every detail must come from their actual answers
+- Text overlays should use THEIR words and perspective
+- Follow the emotional arc: ordinary → crisis → realization → transformation
+- Make it feel like THEIR unique story, not a template
+- End with a meaningful closing that honors their journey
 """
 
     def generate_video_from_storyboard(self, storyboard: str) -> str:
