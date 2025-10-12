@@ -2,12 +2,14 @@ import uuid
 from typing import Dict, List, Optional
 from models.story_models import Question, Answer, StorySession
 from services.openai_service import OpenAIService
+from services.videogen_service import VideoGenService
 from datetime import datetime
 
 class StoryService:
     def __init__(self):
         self.sessions: Dict[str, StorySession] = {}
         self.openai_service = OpenAIService()
+        self.videogen_service = VideoGenService()
         
         # Dynamic conversation flow - no predefined questions
         self.conversation_flow = {
