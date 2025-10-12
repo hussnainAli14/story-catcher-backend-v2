@@ -302,7 +302,7 @@ class StoryService:
         try:
             # Step 1: Create a prompt from the answers
             formatted_answers = [
-                {'answer': answer}
+                {'answer': answer.answer_text if hasattr(answer, 'answer_text') else str(answer)}
                 for answer in session.answers
             ]
             
