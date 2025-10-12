@@ -7,7 +7,8 @@ from typing import Dict, Optional
 class VideoGenService:
     def __init__(self):
         self.api_key = os.getenv('VIDEOGEN_API_KEY', 'b45efa105372a3880ddc2f18464437182597c666')
-        self.base_url = 'https://ext.videogen.io/v1'
+        self.base_url_v1 = 'https://ext.videogen.io/v1'
+        self.base_url_v2 = 'https://ext.videogen.io/v2'
         self.headers = {
             'Authorization': f'Bearer {self.api_key}',
             'Content-Type': 'application/json'
@@ -15,7 +16,7 @@ class VideoGenService:
     
     def generate_outline_from_prompt(self, prompt: str) -> Dict:
         """
-        Generate a video outline from a prompt using VideoGen's Prompt to Outline API
+        Generate a video outline from a prompt using VideoGen's Prompt to Outline API (v2)
         
         Args:
             prompt (str): The story prompt/description
@@ -24,7 +25,7 @@ class VideoGenService:
             Dict: The outline object from VideoGen
         """
         try:
-            url = f"{self.base_url}/prompt-to-outline"
+            url = f"{self.base_url_v2}/prompt-to-outline"
             
             print(f"Generating outline from prompt...")
             print(f"Prompt preview: {prompt[:200]}...")
@@ -56,7 +57,7 @@ class VideoGenService:
     
     def generate_video_from_outline(self, outline: Dict) -> str:
         """
-        Generate a video from an outline using VideoGen's Outline to Video API
+        Generate a video from an outline using VideoGen's Outline to Video API (v2)
         
         Args:
             outline (Dict): The outline object from prompt-to-outline
@@ -65,7 +66,7 @@ class VideoGenService:
             str: The apiFileId for the generated video
         """
         try:
-            url = f"{self.base_url}/outline-to-video"
+            url = f"{self.base_url_v2}/outline-to-video"
             
             print(f"Generating video from outline...")
             
@@ -114,7 +115,7 @@ class VideoGenService:
             str: The apiFileId for the generated video
         """
         try:
-            url = f"{self.base_url}/script-to-video"
+            url = f"{self.base_url_v1}/script-to-video"
             
             # Truncate script to ensure max 1 minute duration (approximately 150 words)
             truncated_script = self._truncate_script_for_duration(script)
@@ -241,7 +242,7 @@ class VideoGenService:
             Dict: Video file information including signed URL and status
         """
         try:
-            url = f"{self.base_url}/get-file"
+            url = f"{self.base_url_v1}/get-file"
             params = {
                 'apiFileId': api_file_id
             }
