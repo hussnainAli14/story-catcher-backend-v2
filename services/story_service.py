@@ -391,7 +391,7 @@ class StoryService:
             text: Long narrative text
             
         Returns:
-            list: List of scene texts
+            list: List of scene texts (aims for 4-6 scenes)
         """
         import re
         
@@ -400,19 +400,23 @@ class StoryService:
             return [text]
         
         # Strategy: Look for sentence transitions that indicate scene changes
-        # Common patterns: "But then", "Suddenly", "From that moment", "Now", "After that", "Since then"
+        # Enhanced patterns for better scene detection
         scene_markers = [
-            r'\.\s+(But then|Suddenly|From that moment|That day|After that|Since then|Now)',
-            r'\.\s+(I realized|I learned|I understood|I discovered)',
-            r'\.\s+(Looking back|In hindsight|Today)',
+            r'\.\s+(But then|Suddenly|Then,|From that moment|That day|After that|Since then|Now)',
+            r'\.\s+(I realized|I learned|I understood|I discovered|I felt|I promised)',
+            r'\.\s+(Looking back|In hindsight|Today|The reality|Lying there)',
         ]
         
         # Try to find natural breaks
         sentences = re.split(r'(?<=[.!?])\s+', text)
         
-        # Group sentences into scenes (aim for 3-5 scenes)
-        target_scenes = min(5, max(3, len(sentences) // 2))
-        sentences_per_scene = max(2, len(sentences) // target_scenes)
+        print(f"Total sentences to split: {len(sentences)}")
+        
+        # Aim for 4-6 scenes for a complete story arc
+        target_scenes = min(6, max(4, len(sentences) // 2))
+        sentences_per_scene = max(1, len(sentences) // target_scenes)
+        
+        print(f"Target scenes: {target_scenes}, sentences per scene: {sentences_per_scene}")
         
         scenes = []
         current_scene = []
@@ -423,17 +427,19 @@ class StoryService:
             # Check if we should start a new scene
             should_break = False
             
-            # Check for scene markers in the NEXT sentence
+            # Check for scene markers in the NEXT sentence (strong indicator)
             if i < len(sentences) - 1:
                 next_sentence = sentences[i + 1]
                 for pattern in scene_markers:
                     if re.search(pattern, next_sentence):
                         should_break = True
+                        print(f"Found scene marker at sentence {i+1}")
                         break
             
-            # Or if we've reached target sentences per scene
+            # Or if we've reached target sentences per scene (and we haven't made too many scenes yet)
             if len(current_scene) >= sentences_per_scene and len(scenes) < target_scenes - 1:
                 should_break = True
+                print(f"Reached sentence limit at sentence {i+1}")
             
             if should_break and current_scene:
                 scenes.append(' '.join(current_scene))
@@ -443,17 +449,23 @@ class StoryService:
         if current_scene:
             scenes.append(' '.join(current_scene))
         
-        # If we ended up with only 1 scene, force split into 3 parts
-        if len(scenes) == 1:
+        print(f"Initial split resulted in {len(scenes)} scenes")
+        
+        # If we ended up with too few scenes (< 3), force split into more
+        if len(scenes) < 3:
+            print(f"Too few scenes ({len(scenes)}), forcing split into 4 parts")
             words = text.split()
-            chunk_size = len(words) // 3
+            chunk_size = len(words) // 4
             scenes = [
                 ' '.join(words[:chunk_size]),
                 ' '.join(words[chunk_size:chunk_size*2]),
-                ' '.join(words[chunk_size*2:])
+                ' '.join(words[chunk_size*2:chunk_size*3]),
+                ' '.join(words[chunk_size*3:])
             ]
         
-        return [s.strip() for s in scenes if s.strip()]
+        final_scenes = [s.strip() for s in scenes if s.strip()]
+        print(f"Final scene count: {len(final_scenes)}")
+        return final_scenes
     
     def format_outline_as_storyboard(self, outline: dict) -> str:
         """
@@ -491,11 +503,13 @@ class StoryService:
             if sections:
                 print(f"Processing {len(sections)} sections/scenes")
                 
-                # If VideoGen only returned 1 section, split it intelligently
-                if len(sections) == 1 and isinstance(sections[0], dict) and 'text' in sections[0]:
-                    print("Only 1 section detected - splitting into multiple scenes")
-                    text = sections[0]['text']
-                    split_scenes = self._split_text_into_scenes(text)
+                # If VideoGen returned 1-2 sections, split them intelligently for better story flow
+                if len(sections) <= 2 and all(isinstance(s, dict) and 'text' in s for s in sections):
+                    print(f"Only {len(sections)} section(s) detected - splitting into multiple scenes for better flow")
+                    
+                    # Combine all section texts if multiple
+                    combined_text = ' '.join([s['text'] for s in sections])
+                    split_scenes = self._split_text_into_scenes(combined_text)
                     print(f"Split into {len(split_scenes)} scenes")
                     
                     for i, scene_text in enumerate(split_scenes, 1):
