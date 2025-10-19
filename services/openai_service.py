@@ -42,21 +42,32 @@ class OpenAIService:
         # Join all answers into a cohesive story prompt
         full_story = " ".join(story_parts)
         
-        # Create a VideoGen prompt that instructs it to create a visual narrative
-        # Explicitly request multiple scenes (4-6 scenes) for a complete story
-        prompt = f"""Create a short, emotional video narrative about this life-changing moment. Break it into 4-6 distinct scenes:
+        # Create a VideoGen prompt that instructs it to create a detailed visual narrative
+        # Request specific, detailed scenes (not just a summary)
+        prompt = f"""Create a detailed, emotional video narrative about this life-changing moment:
 
 {full_story}
 
-Structure as a personal first-person story with these scenes:
-1. Opening scene: Set the scene and context before the moment
-2. The buildup: Leading up to the life-changing event
-3. The key moment: The pivotal event or challenge itself
-4. The emotional impact: Immediate feelings and reactions
-5. The realization: The lesson or insight gained
-6. The transformation: How it changed them going forward
+Create 4-6 DETAILED scenes that fully develop the story. Each scene should have:
+- Rich visual descriptions (what we see, the setting, the mood)
+- Specific actions and moments (not summaries)
+- Emotional depth and sensory details
+- Natural transitions between scenes
 
-Each scene should be visual, emotionally resonant, and flow naturally into the next. Total video length should be 45-60 seconds."""
+Structure:
+1. OPENING SCENE (3-4 sentences): Show the person in their normal life before the moment. Describe the setting, their routine, what they were doing, how they felt.
+
+2. THE BUILDUP (3-4 sentences): Show what led to the life-changing moment. Describe the specific circumstances, their actions, the environment around them.
+
+3. THE KEY MOMENT (4-5 sentences): Show the pivotal event itself in detail. What exactly happened? How did it unfold? What did they see, feel, hear?
+
+4. IMMEDIATE IMPACT (3-4 sentences): Show their immediate physical and emotional reaction. Where are they? What's going through their mind? How does their body feel?
+
+5. THE REALIZATION (3-4 sentences): Show the moment of understanding or lesson learned. What insight came to them? How did they process what happened?
+
+6. THE TRANSFORMATION (3-4 sentences): Show how they've changed since then. What specific behaviors or mindsets are different? How do they live now?
+
+Make each scene visual and specific - show, don't just tell. Total video: 45-60 seconds."""
         
         return prompt
     
