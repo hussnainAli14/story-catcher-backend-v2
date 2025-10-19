@@ -43,18 +43,20 @@ class OpenAIService:
         full_story = " ".join(story_parts)
         
         # Create a VideoGen prompt that instructs it to create a visual narrative
-        prompt = f"""Create a short, emotional video narrative about this life-changing moment:
+        # Explicitly request multiple scenes (4-6 scenes) for a complete story
+        prompt = f"""Create a short, emotional video narrative about this life-changing moment. Break it into 4-6 distinct scenes:
 
 {full_story}
 
-Make it a personal first-person story with:
-- An opening that sets the scene
-- The key moment or challenge
-- The emotional impact
-- The realization or lesson learned
-- How it changed them
+Structure as a personal first-person story with these scenes:
+1. Opening scene: Set the scene and context before the moment
+2. The buildup: Leading up to the life-changing event
+3. The key moment: The pivotal event or challenge itself
+4. The emotional impact: Immediate feelings and reactions
+5. The realization: The lesson or insight gained
+6. The transformation: How it changed them going forward
 
-Keep it under 1 minute, visual, and emotionally resonant."""
+Each scene should be visual, emotionally resonant, and flow naturally into the next. Total video length should be 45-60 seconds."""
         
         return prompt
     
