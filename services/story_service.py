@@ -383,6 +383,78 @@ class StoryService:
             # Fallback: treat entire text as one section
             return {'sections': [{'text': storyboard_text}]}
     
+    def _split_text_into_scenes(self, text: str) -> list:
+        """
+        Split a long narrative text into multiple scenes based on natural breaks
+        
+        Args:
+            text: Long narrative text
+            
+        Returns:
+            list: List of scene texts
+        """
+        import re
+        
+        # If text is already short (< 150 chars), return as single scene
+        if len(text) < 150:
+            return [text]
+        
+        # Strategy: Look for sentence transitions that indicate scene changes
+        # Common patterns: "But then", "Suddenly", "From that moment", "Now", "After that", "Since then"
+        scene_markers = [
+            r'\.\s+(But then|Suddenly|From that moment|That day|After that|Since then|Now)',
+            r'\.\s+(I realized|I learned|I understood|I discovered)',
+            r'\.\s+(Looking back|In hindsight|Today)',
+        ]
+        
+        # Try to find natural breaks
+        sentences = re.split(r'(?<=[.!?])\s+', text)
+        
+        # Group sentences into scenes (aim for 3-5 scenes)
+        target_scenes = min(5, max(3, len(sentences) // 2))
+        sentences_per_scene = max(2, len(sentences) // target_scenes)
+        
+        scenes = []
+        current_scene = []
+        
+        for i, sentence in enumerate(sentences):
+            current_scene.append(sentence)
+            
+            # Check if we should start a new scene
+            should_break = False
+            
+            # Check for scene markers in the NEXT sentence
+            if i < len(sentences) - 1:
+                next_sentence = sentences[i + 1]
+                for pattern in scene_markers:
+                    if re.search(pattern, next_sentence):
+                        should_break = True
+                        break
+            
+            # Or if we've reached target sentences per scene
+            if len(current_scene) >= sentences_per_scene and len(scenes) < target_scenes - 1:
+                should_break = True
+            
+            if should_break and current_scene:
+                scenes.append(' '.join(current_scene))
+                current_scene = []
+        
+        # Add remaining sentences as last scene
+        if current_scene:
+            scenes.append(' '.join(current_scene))
+        
+        # If we ended up with only 1 scene, force split into 3 parts
+        if len(scenes) == 1:
+            words = text.split()
+            chunk_size = len(words) // 3
+            scenes = [
+                ' '.join(words[:chunk_size]),
+                ' '.join(words[chunk_size:chunk_size*2]),
+                ' '.join(words[chunk_size*2:])
+            ]
+        
+        return [s.strip() for s in scenes if s.strip()]
+    
     def format_outline_as_storyboard(self, outline: dict) -> str:
         """
         Format VideoGen outline as a readable storyboard for display in chat
@@ -418,46 +490,59 @@ class StoryService:
             
             if sections:
                 print(f"Processing {len(sections)} sections/scenes")
-                for i, section in enumerate(sections, 1):
-                    print(f"Section {i} keys: {section.keys() if isinstance(section, dict) else 'Not a dict'}")
-                    print(f"Section {i} content: {section}")
+                
+                # If VideoGen only returned 1 section, split it intelligently
+                if len(sections) == 1 and isinstance(sections[0], dict) and 'text' in sections[0]:
+                    print("Only 1 section detected - splitting into multiple scenes")
+                    text = sections[0]['text']
+                    split_scenes = self._split_text_into_scenes(text)
+                    print(f"Split into {len(split_scenes)} scenes")
                     
-                    storyboard_parts.append(f"\n**Scene {i}:**")
-                    
-                    # Extract all relevant content from the section
-                    if isinstance(section, dict):
-                        # Try different possible field names
-                        content_parts = []
+                    for i, scene_text in enumerate(split_scenes, 1):
+                        storyboard_parts.append(f"\n**Scene {i}:**")
+                        storyboard_parts.append(scene_text)
+                else:
+                    # Process multiple sections normally
+                    for i, section in enumerate(sections, 1):
+                        print(f"Section {i} keys: {section.keys() if isinstance(section, dict) else 'Not a dict'}")
+                        print(f"Section {i} content: {section}")
                         
-                        # Main text/description
-                        if 'text' in section:
-                            content_parts.append(section['text'])
-                        if 'description' in section:
-                            content_parts.append(section['description'])
-                        if 'narrative' in section:
-                            content_parts.append(section['narrative'])
-                        if 'textOverlay' in section:
-                            content_parts.append(f"Text Overlay: {section['textOverlay']}")
-                        if 'voiceover' in section:
-                            content_parts.append(f"Voiceover: {section['voiceover']}")
+                        storyboard_parts.append(f"\n**Scene {i}:**")
                         
-                        # Visual elements
-                        if 'visualPrompt' in section:
-                            content_parts.append(f"Visual: {section['visualPrompt']}")
-                        if 'imagePrompt' in section:
-                            content_parts.append(f"Image: {section['imagePrompt']}")
-                        
-                        # Scene details
-                        if 'duration' in section:
-                            content_parts.append(f"Duration: {section['duration']}s")
-                        
-                        if content_parts:
-                            storyboard_parts.append(" ".join(content_parts))
+                        # Extract all relevant content from the section
+                        if isinstance(section, dict):
+                            # Try different possible field names
+                            content_parts = []
+                            
+                            # Main text/description
+                            if 'text' in section:
+                                content_parts.append(section['text'])
+                            if 'description' in section:
+                                content_parts.append(section['description'])
+                            if 'narrative' in section:
+                                content_parts.append(section['narrative'])
+                            if 'textOverlay' in section:
+                                content_parts.append(f"Text Overlay: {section['textOverlay']}")
+                            if 'voiceover' in section:
+                                content_parts.append(f"Voiceover: {section['voiceover']}")
+                            
+                            # Visual elements
+                            if 'visualPrompt' in section:
+                                content_parts.append(f"Visual: {section['visualPrompt']}")
+                            if 'imagePrompt' in section:
+                                content_parts.append(f"Image: {section['imagePrompt']}")
+                            
+                            # Scene details
+                            if 'duration' in section:
+                                content_parts.append(f"Duration: {section['duration']}s")
+                            
+                            if content_parts:
+                                storyboard_parts.append(" ".join(content_parts))
+                            else:
+                                # If no known fields, just stringify the whole section
+                                storyboard_parts.append(str(section))
                         else:
-                            # If no known fields, just stringify the whole section
                             storyboard_parts.append(str(section))
-                    else:
-                        storyboard_parts.append(str(section))
             else:
                 print("WARNING: No sections found in outline!")
                 print(f"Outline structure: {outline}")
