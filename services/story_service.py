@@ -501,62 +501,49 @@ class StoryService:
                 print(f"Outline is a list with {len(sections)} items")
             
             if sections:
-                print(f"Processing {len(sections)} sections/scenes")
+                print(f"Processing {len(sections)} sections/scenes from VideoGen")
                 
-                # If VideoGen returned 1-2 sections, split them intelligently for better story flow
-                if len(sections) <= 2 and all(isinstance(s, dict) and 'text' in s for s in sections):
-                    print(f"Only {len(sections)} section(s) detected - splitting into 2 detailed scenes")
+                # Show sections as-is from VideoGen (no splitting)
+                for i, section in enumerate(sections, 1):
+                    print(f"Section {i} keys: {section.keys() if isinstance(section, dict) else 'Not a dict'}")
+                    print(f"Section {i} content: {section}")
                     
-                    # Combine all section texts if multiple
-                    combined_text = ' '.join([s['text'] for s in sections])
-                    split_scenes = self._split_text_into_scenes(combined_text, target_scenes=2)
-                    print(f"Split into {len(split_scenes)} scenes")
+                    storyboard_parts.append(f"\n**Scene {i}:**")
                     
-                    for i, scene_text in enumerate(split_scenes, 1):
-                        storyboard_parts.append(f"\n**Scene {i}:**")
-                        storyboard_parts.append(scene_text)
-                else:
-                    # Process multiple sections normally
-                    for i, section in enumerate(sections, 1):
-                        print(f"Section {i} keys: {section.keys() if isinstance(section, dict) else 'Not a dict'}")
-                        print(f"Section {i} content: {section}")
+                    # Extract all relevant content from the section
+                    if isinstance(section, dict):
+                        # Try different possible field names
+                        content_parts = []
                         
-                        storyboard_parts.append(f"\n**Scene {i}:**")
+                        # Main text/description
+                        if 'text' in section:
+                            content_parts.append(section['text'])
+                        if 'description' in section:
+                            content_parts.append(section['description'])
+                        if 'narrative' in section:
+                            content_parts.append(section['narrative'])
+                        if 'textOverlay' in section:
+                            content_parts.append(f"Text Overlay: {section['textOverlay']}")
+                        if 'voiceover' in section:
+                            content_parts.append(f"Voiceover: {section['voiceover']}")
                         
-                        # Extract all relevant content from the section
-                        if isinstance(section, dict):
-                            # Try different possible field names
-                            content_parts = []
-                            
-                            # Main text/description
-                            if 'text' in section:
-                                content_parts.append(section['text'])
-                            if 'description' in section:
-                                content_parts.append(section['description'])
-                            if 'narrative' in section:
-                                content_parts.append(section['narrative'])
-                            if 'textOverlay' in section:
-                                content_parts.append(f"Text Overlay: {section['textOverlay']}")
-                            if 'voiceover' in section:
-                                content_parts.append(f"Voiceover: {section['voiceover']}")
-                            
-                            # Visual elements
-                            if 'visualPrompt' in section:
-                                content_parts.append(f"Visual: {section['visualPrompt']}")
-                            if 'imagePrompt' in section:
-                                content_parts.append(f"Image: {section['imagePrompt']}")
-                            
-                            # Scene details
-                            if 'duration' in section:
-                                content_parts.append(f"Duration: {section['duration']}s")
-                            
-                            if content_parts:
-                                storyboard_parts.append(" ".join(content_parts))
-                            else:
-                                # If no known fields, just stringify the whole section
-                                storyboard_parts.append(str(section))
+                        # Visual elements
+                        if 'visualPrompt' in section:
+                            content_parts.append(f"Visual: {section['visualPrompt']}")
+                        if 'imagePrompt' in section:
+                            content_parts.append(f"Image: {section['imagePrompt']}")
+                        
+                        # Scene details
+                        if 'duration' in section:
+                            content_parts.append(f"Duration: {section['duration']}s")
+                        
+                        if content_parts:
+                            storyboard_parts.append(" ".join(content_parts))
                         else:
+                            # If no known fields, just stringify the whole section
                             storyboard_parts.append(str(section))
+                    else:
+                        storyboard_parts.append(str(section))
             else:
                 print("WARNING: No sections found in outline!")
                 print(f"Outline structure: {outline}")
