@@ -80,14 +80,14 @@ class VideoGenService:
             print(f"Outline type: {type(outline)}")
             print(f"Outline keys: {outline.keys() if isinstance(outline, dict) else 'Not a dict'}")
             
-            payload = outline.copy() if isinstance(outline, dict) else outline
-            
-            # Add aspect ratio to the outline
-            if isinstance(payload, dict):
-                payload["aspectRatio"] = {
+            # The API expects the outline wrapped in a specific structure
+            payload = {
+                "outline": outline,
+                "aspectRatio": {
                     "width": 9,
                     "height": 16
                 }
+            }
             
             print(f"Payload for outline-to-video: {payload}")
             
