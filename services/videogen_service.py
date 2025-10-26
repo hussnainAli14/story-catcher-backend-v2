@@ -45,13 +45,16 @@ class VideoGenService:
             
             result = response.json()
             print(f"Outline generated successfully!")
+            print(f"Full API response: {result}")
             print(f"Outline response keys: {result.keys() if isinstance(result, dict) else 'Not a dict'}")
             
             # Return just the outline object, not the entire response
             # VideoGen API likely returns something like: {"outline": {...}, "otherStuff": ...}
             if isinstance(result, dict) and 'outline' in result:
                 print(f"Returning outline object from response")
-                return result['outline']
+                outline_obj = result['outline']
+                print(f"Outline object structure: {outline_obj}")
+                return outline_obj
             else:
                 print(f"Returning entire result (no 'outline' key found)")
                 return result
