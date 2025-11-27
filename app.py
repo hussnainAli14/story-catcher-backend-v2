@@ -20,9 +20,11 @@ def create_app():
     from routes.story_routes import story_bp
     from routes.auth_routes import auth_bp
     from routes.submissions_routes import submissions_bp
+    from routes.admin_routes import admin_bp
     app.register_blueprint(story_bp, url_prefix='/api')
     app.register_blueprint(auth_bp, url_prefix='/api')
     app.register_blueprint(submissions_bp, url_prefix='/api')
+    app.register_blueprint(admin_bp, url_prefix='/api')
     
     return app
 

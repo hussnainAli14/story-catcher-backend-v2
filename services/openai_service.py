@@ -12,6 +12,9 @@ class OpenAIService:
         self.client = None
         self.api_key = os.getenv('OPENAI_API_KEY')
         self.videogen_service = VideoGenService()
+        # Import here to avoid circular imports if any
+        from services.prompt_service import PromptService
+        self.prompt_service = PromptService()
     
     def _get_client(self):
         """Lazy initialization of OpenAI client"""
@@ -42,8 +45,18 @@ class OpenAIService:
         # Join all answers into a cohesive story prompt
         full_story = " ".join(story_parts)
         
-        # Create a VideoGen prompt that instructs it to create a detailed visual narrative
-        # Request 2 detailed scenes (like before) but with more content
+        # Try to get dynamic prompt from database
+        dynamic_prompt_template = self.prompt_service.get_prompt()
+        
+        if dynamic_prompt_template:
+            print("Using dynamic prompt from database")
+            # Replace placeholder with actual story
+            # We use a simple replace to avoid issues with other curly braces in the prompt
+            prompt = dynamic_prompt_template.replace('{full_story}', full_story)
+            return prompt
+            
+        print("Using fallback hardcoded prompt")
+        # Fallback to hardcoded prompt if DB fetch fails
         prompt = f"""Create a detailed, emotional video narrative about this life-changing moment:
 
 {full_story}
