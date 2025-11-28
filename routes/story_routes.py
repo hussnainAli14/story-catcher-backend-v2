@@ -524,6 +524,59 @@ def get_storyboard_status(session_id):
             'error': str(e)
         }), 500
 
+@story_bp.route('/video/process-and-store/<api_file_id>', methods=['POST'])
+def process_and_store_video(api_file_id):
+    """
+    Background task to download and store video
+    This should be called after video generation is complete
+    """
+    try:
+        data = request.get_json()
+        session_id = data.get('session_id')
+        
+        if not session_id:
+            return jsonify({
+                'success': False,
+                'message': 'Session ID is required'
+            }), 400
+        
+        # Download and store video
+        from services.video_storage_service import VideoStorageService
+        storage_service = VideoStorageService()
+        
+        print(f"Starting video download and storage for apiFileId: {api_file_id}, session: {session_id}")
+        result = storage_service.download_and_store_video(api_file_id, session_id)
+        
+        if result['success']:
+            # Update Supabase with permanent URL
+            print(f"Video stored successfully, updating Supabase...")
+            story_service.save_to_supabase(
+                session_id, 
+                f"videogen://{api_file_id}",
+                permanent_url=result['permanent_url']
+            )
+            
+            return jsonify({
+                'success': True,
+                'permanent_url': result['permanent_url'],
+                'message': 'Video downloaded and stored successfully'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': result.get('error', 'Unknown error')
+            }), 500
+            
+    except Exception as e:
+        print(f"Error in process_and_store_video: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 @story_bp.route('/health', methods=['GET'])
 def health_check():
     """

@@ -227,7 +227,7 @@ class StoryService:
         print(f"Successfully saved email {email} for session {session_id}")
         return True
 
-    def save_to_supabase(self, session_id: str, video_url: str) -> bool:
+    def save_to_supabase(self, session_id: str, video_url: str, permanent_url: str = None) -> bool:
         """Save the completed story to Supabase"""
         print(f"Attempting to save to Supabase for session {session_id} with video {video_url}")
         print(f"Available sessions: {list(self.sessions.keys())}")
@@ -260,12 +260,22 @@ class StoryService:
             
             supabase = create_client(supabase_url, supabase_key)
             
+            # Extract videogen API file ID if present
+            videogen_api_file_id = None
+            if video_url and video_url.startswith('videogen://'):
+                videogen_api_file_id = video_url.replace('videogen://', '')
+            
             # Prepare data for Supabase
             data_to_insert = {
                 'email': session.user_email,
-                'video_url': video_url,
+                'video_url': permanent_url or video_url,
+                'videogen_api_file_id': videogen_api_file_id,
                 'created_at': session.created_at.isoformat()
             }
+            
+            # Add permanent_video_url if it's different from video_url
+            if permanent_url:
+                data_to_insert['permanent_video_url'] = permanent_url
             print(f"Data to insert: {data_to_insert}")
             
             # Save to Supabase
