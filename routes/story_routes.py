@@ -551,6 +551,7 @@ def process_and_store_video(api_file_id):
             # Update Supabase with permanent URL
             print(f"Video stored successfully, updating Supabase...")
             email = data.get('email')
+            print(f"[process_and_store_video] Received email from request: {email}")
             story_service.save_to_supabase(
                 session_id, 
                 f"videogen://{api_file_id}",

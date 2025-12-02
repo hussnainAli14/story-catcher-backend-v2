@@ -230,6 +230,7 @@ class StoryService:
     def save_to_supabase(self, session_id: str, video_url: str, permanent_url: str = None, email: str = None) -> bool:
         """Save the completed story to Supabase"""
         print(f"Attempting to save to Supabase for session {session_id} with video {video_url}")
+        print(f"[save_to_supabase] Email parameter received: {email}")
         print(f"Available sessions: {list(self.sessions.keys())}")
         
         # Handle missing session (e.g. after server restart)
