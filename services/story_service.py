@@ -235,13 +235,12 @@ class StoryService:
         if session_id not in self.sessions:
             print(f"Session {session_id} not found in sessions")
             return False
-        
+            
         session = self.sessions[session_id]
         print(f"Session found, user_email: {session.user_email}")
         
         if not session.user_email:
-            print(f"No email found for session {session_id}, skipping Supabase save")
-            return False
+            print(f"No email found for session {session_id}, proceeding with empty email")
         
         try:
             import os
