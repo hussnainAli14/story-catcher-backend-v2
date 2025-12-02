@@ -212,6 +212,111 @@ class StoryService:
         
         session = self.sessions[session_id]
         return session.generated_story
+
+    def save_user_email(self, session_id: str, email: str) -> bool:
+        """Save user email to the session"""
+        print(f"Attempting to save email {email} for session {session_id}")
+        print(f"Available sessions: {list(self.sessions.keys())}")
+        
+        if session_id not in self.sessions:
+            print(f"Session {session_id} not found in sessions")
+            return False
+        
+        session = self.sessions[session_id]
+        session.user_email = email
+        print(f"Successfully saved email {email} for session {session_id}")
+        return True
+
+    def save_to_supabase(self, session_id: str, video_url: str, permanent_url: str = None) -> bool:
+        """Save the completed story to Supabase"""
+        print(f"Attempting to save to Supabase for session {session_id} with video {video_url}")
+        print(f"Available sessions: {list(self.sessions.keys())}")
+        
+        # Handle missing session (e.g. after server restart)
+        if session_id not in self.sessions:
+            print(f"Session {session_id} not found in sessions - creating fallback session object")
+            # Create a dummy session object to allow saving
+            from models.story_models import StorySession
+            from datetime import datetime
+            session = StorySession(
+                session_id=session_id,
+                created_at=datetime.now(),
+                answers=[],
+                current_question=5,
+                is_complete=True
+            )
+            # We don't have the email if session is lost, but that's acceptable for anonymous/fallback
+            session.user_email = None
+        else:
+            session = self.sessions[session_id]
+            
+        print(f"Session found/created, user_email: {session.user_email}")
+        
+        if not session.user_email:
+            print(f"No email found for session {session_id}, proceeding with empty email")
+        
+        try:
+            import os
+            from supabase import create_client
+            
+            # Get Supabase client
+            supabase_url = os.getenv('SUPABASE_URL')
+            supabase_key = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
+            
+            print(f"Supabase URL: {supabase_url}")
+            print(f"Supabase Key: {supabase_key[:10]}..." if supabase_key else "None")
+            
+            if not supabase_url or not supabase_key:
+                print("Supabase credentials not found")
+                return False
+            
+            supabase = create_client(supabase_url, supabase_key)
+            
+            # Extract videogen API file ID if present
+            videogen_api_file_id = None
+            if video_url and video_url.startswith('videogen://'):
+                videogen_api_file_id = video_url.replace('videogen://', '')
+            
+            # Prepare data for Supabase
+            data_to_insert = {
+                'email': session.user_email,
+                'video_url': permanent_url or video_url,
+                'videogen_api_file_id': videogen_api_file_id,
+                'created_at': session.created_at.isoformat()
+            }
+            
+            # Add permanent_video_url if it's different from video_url
+            if permanent_url:
+                data_to_insert['permanent_video_url'] = permanent_url
+            print(f"Data to insert: {data_to_insert}")
+            
+            # Save to Supabase
+            response = supabase.table('story_submissions').insert([data_to_insert]).execute()
+            
+            print(f"Supabase response: {response}")
+            print(f"Successfully saved story to Supabase for session {session_id}")
+            return True
+            
+        except Exception as e:
+            print(f"Error saving to Supabase: {e}")
+            return False
+
+    def generate_videogen_outline_for_display(self, session_id: str) -> dict:
+        """
+        Generate VideoGen outline for display in chat (allows editing before video generation)
+        
+        Returns:
+            dict: {
+                'success': bool,
+                'outline': dict (if successful),
+                'error': str (if failed)
+            }
+        """
+        print(f"Generating VideoGen outline for display for session {session_id}")
+        
+        if session_id not in self.sessions:
+            return {'success': False, 'error': 'Session not found'}
+        
         session = self.sessions[session_id]
         
         if not session.is_complete:
