@@ -227,7 +227,7 @@ class StoryService:
         print(f"Successfully saved email {email} for session {session_id}")
         return True
 
-    def save_to_supabase(self, session_id: str, video_url: str, permanent_url: str = None) -> bool:
+    def save_to_supabase(self, session_id: str, video_url: str, permanent_url: str = None, email: str = None) -> bool:
         """Save the completed story to Supabase"""
         print(f"Attempting to save to Supabase for session {session_id} with video {video_url}")
         print(f"Available sessions: {list(self.sessions.keys())}")
@@ -246,9 +246,12 @@ class StoryService:
                 is_complete=True
             )
             # We don't have the email if session is lost, but that's acceptable for anonymous/fallback
-            session.user_email = None
+            session.user_email = email
         else:
             session = self.sessions[session_id]
+            # Override session email if explicitly provided
+            if email:
+                session.user_email = email
             
         print(f"Session found/created, user_email: {session.user_email}")
         

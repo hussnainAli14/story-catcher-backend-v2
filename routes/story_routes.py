@@ -550,10 +550,12 @@ def process_and_store_video(api_file_id):
         if result['success']:
             # Update Supabase with permanent URL
             print(f"Video stored successfully, updating Supabase...")
+            email = data.get('email')
             story_service.save_to_supabase(
                 session_id, 
                 f"videogen://{api_file_id}",
-                permanent_url=result['permanent_url']
+                permanent_url=result['permanent_url'],
+                email=email
             )
             
             return jsonify({
