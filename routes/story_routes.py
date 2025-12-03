@@ -445,8 +445,9 @@ def save_video_to_supabase():
         
         # Save to Supabase
         try:
-            print(f"Saving final video {video_url} to Supabase for session {session_id}")
-            success = story_service.save_to_supabase(session_id, video_url)
+            email = data.get('email')
+            print(f"Saving final video {video_url} to Supabase for session {session_id} with email {email}")
+            success = story_service.save_to_supabase(session_id, video_url, email=email)
             
             if success:
                 return jsonify({
