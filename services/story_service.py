@@ -1,4 +1,5 @@
 import uuid
+import re
 from typing import Dict, List, Optional
 from models.story_models import Question, Answer, StorySession
 from services.openai_service import OpenAIService
@@ -376,8 +377,16 @@ class StoryService:
             for match in matches:
                 # Clean up the text - remove extra whitespace and newlines
                 text = match.strip()
-                if text:
-                    sections.append({'text': text})
+                
+                # Skip if this is just a title line like "Scene 1: The Moment" or "Scene 2: The Impact"
+                # These are labels, not actual content (short lines with just scene prefixes)
+                if text and not re.match(r'^Scene\s+\d+:\s*.{0,30}$', text):
+                    # Remove any remaining "Scene X:" prefixes from the text
+                    text = re.sub(r'^Scene\s+\d+:\s*', '', text)
+                    text = text.strip()
+                    
+                    if text:  # Only add if there's actual content after cleaning
+                        sections.append({'text': text})
             
             # If no scenes found, try to extract any text content
             if not sections:
@@ -386,11 +395,17 @@ class StoryService:
                 content_lines = []
                 for line in lines:
                     line = line.strip()
-                    # Skip markdown headers, tips, and empty lines
+                    # Skip markdown headers, tips, scene labels, and empty lines
                     if line and not line.startswith('**Storyboard:') and not line.startswith('*This is') and not line.startswith('💡'):
-                        # Remove markdown formatting
-                        line = line.replace('**', '').replace('*', '')
-                        content_lines.append(line)
+                        # Skip lines that are just scene titles (e.g., "Scene 1: The Moment")
+                        if not re.match(r'^Scene\s+\d+:\s*.{0,30}$', line):
+                            # Remove markdown formatting
+                            line = line.replace('**', '').replace('*', '')
+                            # Remove "Scene X:" prefix if present
+                            line = re.sub(r'^Scene\s+\d+:\s*', '', line)
+                            line = line.strip()
+                            if line:
+                                content_lines.append(line)
                 
                 if content_lines:
                     # Combine into sections (split by double newlines if present)
@@ -401,6 +416,11 @@ class StoryService:
             # Ensure we have at least one section
             if not sections:
                 sections = [{'text': storyboard_text}]
+            
+            print(f"\u2705 Parsed storyboard into {len(sections)} sections (filtered out title-only scenes)")
+            for i, section in enumerate(sections, 1):
+                preview = section['text'][:100] if len(section['text']) > 100 else section['text']
+                print(f"  Section {i}: {preview}...")
             
             return {'sections': sections}
             
@@ -543,11 +563,18 @@ class StoryService:
                         
                         # Main text/description
                         if 'text' in section:
-                            content_parts.append(section['text'])
+                            # Clean up \"Scene X:\" prefix if present
+                            text = section['text']
+                            text = re.sub(r'^Scene\s+\d+:\s*', '', text).strip()
+                            content_parts.append(text)
                         if 'description' in section:
-                            content_parts.append(section['description'])
+                            text = section['description']
+                            text = re.sub(r'^Scene\s+\d+:\s*', '', text).strip()
+                            content_parts.append(text)
                         if 'narrative' in section:
-                            content_parts.append(section['narrative'])
+                            text = section['narrative']
+                            text = re.sub(r'^Scene\s+\d+:\s*', '', text).strip()
+                            content_parts.append(text)
                         if 'textOverlay' in section:
                             content_parts.append(f"Text Overlay: {section['textOverlay']}")
                         if 'voiceover' in section:

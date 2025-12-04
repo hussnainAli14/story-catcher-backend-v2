@@ -581,6 +581,90 @@ def process_and_store_video(api_file_id):
         }), 500
 
 
+
+@story_bp.route('/video/check-and-download/<api_file_id>', methods=['POST'])
+def check_and_download_video(api_file_id):
+    """
+    Check if video is ready and download it if so.
+    This is a convenience endpoint that combines status check and download.
+    """
+    try:
+        data = request.get_json()
+        session_id = data.get('session_id')
+        
+        if not session_id:
+            return jsonify({
+                'success': False,
+                'message': 'Session ID is required'
+            }), 400
+        
+        # Check video status
+        try:
+            status_result = videogen_service.get_video_file(api_file_id)
+            
+            # Check if video is ready
+            loading_state = status_result.get('loadingState', '')
+            
+            if loading_state != 'FULFILLED':
+                # Video not ready yet
+                return jsonify({
+                    'success': True,
+                    'ready': False,
+                    'status': loading_state,
+                    'message': 'Video is still processing'
+                })
+            
+            # Video is ready! Download and store it
+            from services.video_storage_service import VideoStorageService
+            storage_service = VideoStorageService()
+            
+            email = data.get('email')
+            print(f"Video is ready. Starting download for session {session_id}")
+            
+            result = storage_service.download_and_store_video(api_file_id, session_id)
+            
+            if result['success']:
+                # Update Supabase with permanent URL
+                print(f"Video stored successfully, updating Supabase...")
+                story_service.save_to_supabase(
+                    session_id,
+                    f"videogen://{api_file_id}",
+                    permanent_url=result['permanent_url'],
+                    email=email
+                )
+                
+                return jsonify({
+                    'success': True,
+                    'ready': True,
+                    'permanent_url': result['permanent_url'],
+                    'message': 'Video downloaded and stored successfully'
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'ready': True,
+                    'error': result.get('error', 'Failed to download video')
+                }), 500
+                
+        except Exception as e:
+            print(f"Error in check-and-download: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 500
+            
+    except Exception as e:
+        print(f"Error in check_and_download_video: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 @story_bp.route('/health', methods=['GET'])
 def health_check():
     """

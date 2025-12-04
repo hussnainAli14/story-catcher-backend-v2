@@ -14,6 +14,7 @@ class VideoStorageService:
         
         self.supabase = create_client(self.supabase_url, self.supabase_key)
         self.storage_bucket = 'story-videos'  # The bucket you created in Supabase
+        self.max_download_retries = 3  # Number of retry attempts for downloads
     
     def download_and_store_video(self, api_file_id: str, session_id: str) -> Dict:
         """
@@ -86,10 +87,18 @@ class VideoStorageService:
                 # - {'signedUrl': '...'}
                 # - {'url': '...'}
                 
+                # Check if loadingState is FULFILLED (actual VideoGen response format)
+                if result.get('loadingState') == 'FULFILLED' and result.get('apiFileSignedUrl'):
+                    print(f"✅ Video is ready! Loading state: FULFILLED")
+                    return result['apiFileSignedUrl']
+                
+                # Fallback checks for other possible response formats
                 if result.get('status') == 'completed' and result.get('signedUrl'):
                     return result['signedUrl']
                 elif result.get('signedUrl'):
                     return result['signedUrl']
+                elif result.get('apiFileSignedUrl'):
+                    return result['apiFileSignedUrl']
                 elif result.get('url'):
                     return result['url']
                 elif result.get('status') == 'failed':
@@ -110,29 +119,44 @@ class VideoStorageService:
             return None
     
     def _download_video(self, video_url: str) -> Optional[bytes]:
-        """Download video from URL to memory"""
-        try:
-            print(f"Downloading video from: {video_url[:100]}...")
-            
-            # Stream download to handle large files
-            response = requests.get(video_url, stream=True, timeout=300)
-            response.raise_for_status()
-            
-            # Read video data
-            video_data = response.content
-            
-            print(f"Downloaded video: {len(video_data)} bytes ({len(video_data) / (1024 * 1024):.2f} MB)")
-            return video_data
-            
-        except requests.exceptions.Timeout:
-            print("Video download timed out")
-            return None
-        except requests.exceptions.RequestException as e:
-            print(f"Error downloading video: {str(e)}")
-            return None
-        except Exception as e:
-            print(f"Unexpected error downloading video: {str(e)}")
-            return None
+        """Download video from URL to memory with retry logic"""
+        for attempt in range(self.max_download_retries):
+            try:
+                print(f"Downloading video from: {video_url[:100]}... (Attempt {attempt + 1}/{self.max_download_retries})")
+                
+                # Stream download to handle large files
+                response = requests.get(video_url, stream=True, timeout=300)
+                response.raise_for_status()
+                
+                # Read video data
+                video_data = response.content
+                
+                print(f"Downloaded video: {len(video_data)} bytes ({len(video_data) / (1024 * 1024):.2f} MB)")
+                return video_data
+                
+            except requests.exceptions.Timeout:
+                print(f"Video download timed out (attempt {attempt + 1})")
+                if attempt < self.max_download_retries - 1:
+                    wait_time = (attempt + 1) * 5  # Exponential backoff
+                    print(f"Retrying in {wait_time} seconds...")
+                    time.sleep(wait_time)
+                else:
+                    print("Max retries reached. Download failed.")
+                    return None
+            except requests.exceptions.RequestException as e:
+                print(f"Error downloading video: {str(e)} (attempt {attempt + 1})")
+                if attempt < self.max_download_retries - 1:
+                    wait_time = (attempt + 1) * 5
+                    print(f"Retrying in {wait_time} seconds...")
+                    time.sleep(wait_time)
+                else:
+                    print("Max retries reached. Download failed.")
+                    return None
+            except Exception as e:
+                print(f"Unexpected error downloading video: {str(e)}")
+                return None
+        
+        return None
     
     def _upload_to_supabase(self, video_data: bytes, session_id: str, api_file_id: str) -> Optional[str]:
         """Upload video to Supabase Storage"""
@@ -144,15 +168,34 @@ class VideoStorageService:
             
             print(f"Uploading to Supabase Storage: {filename}")
             print(f"Bucket: {self.storage_bucket}")
+            print(f"File size: {len(video_data) / (1024 * 1024):.2f} MB")
+            
+            # Check if file already exists
+            try:
+                existing_files = self.supabase.storage.from_(self.storage_bucket).list()
+                if any(f.get('name') == filename for f in existing_files):
+                    print(f"File {filename} already exists, getting existing URL")
+                    public_url = self.supabase.storage.from_(self.storage_bucket).get_public_url(filename)
+                    return public_url
+            except Exception as e:
+                print(f"Could not check for existing files: {str(e)}")
+                # Continue with upload anyway
             
             # Upload to Supabase Storage
-            result = self.supabase.storage.from_(self.storage_bucket).upload(
-                path=filename,
-                file=video_data,
-                file_options={"content-type": "video/mp4"}
-            )
-            
-            print(f"Upload result: {result}")
+            try:
+                result = self.supabase.storage.from_(self.storage_bucket).upload(
+                    path=filename,
+                    file=video_data,
+                    file_options={"content-type": "video/mp4", "upsert": "true"}
+                )
+                print(f"Upload result: {result}")
+            except Exception as upload_error:
+                print(f"Upload error: {str(upload_error)}")
+                # If upload fails due to duplicate, try to get the existing URL
+                if "already exists" in str(upload_error).lower() or "duplicate" in str(upload_error).lower():
+                    print("File already exists, retrieving existing URL")
+                else:
+                    raise
             
             # Get public URL
             public_url = self.supabase.storage.from_(self.storage_bucket).get_public_url(filename)
