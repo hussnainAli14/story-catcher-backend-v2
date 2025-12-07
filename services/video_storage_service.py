@@ -92,6 +92,11 @@ class VideoStorageService:
                     print(f"✅ Video is ready! Loading state: FULFILLED")
                     return result['apiFileSignedUrl']
                 
+                # Relaxed check: if we have a signed URL, use it (even if status isn't explicitly FULFILLED yet)
+                if result.get('apiFileSignedUrl'):
+                    print(f"✅ Video URL found (relaxed check): {result.get('apiFileSignedUrl')[:50]}...")
+                    return result['apiFileSignedUrl']
+                
                 # Fallback checks for other possible response formats
                 if result.get('status') == 'completed' and result.get('signedUrl'):
                     return result['signedUrl']
