@@ -553,6 +553,11 @@ def process_and_store_video(api_file_id):
             print(f"Video stored successfully, updating Supabase...")
             email = data.get('email')
             print(f"[process_and_store_video] Received email from request: {email}")
+            
+            # Explicitly update session email to match request (clearing it if None)
+            # This ensures we don't use a stale email from a previous run
+            story_service.save_user_email(session_id, email)
+            
             story_service.save_to_supabase(
                 session_id, 
                 f"videogen://{api_file_id}",
