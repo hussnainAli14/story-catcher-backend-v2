@@ -97,7 +97,7 @@ class StoryService:
             session.current_question = 5  # Mark as complete
             session.is_complete = True
             return {
-                "message": "Thank you for sharing your story with such openness and courage. I'm honored to have been part of this journey with you.\n\nNow that we have your four answers, I'm going to help you transform them into a visual storyboard — something that could be used for a short video, animated clip, or even a slideshow. This will include suggested scenes, visuals, mood, and transitions to bring your experience to life with meaning and impact.",
+                "message": "Thank you for sharing your story with such openness and courage. I'm honored to have been part of this journey with you. Now I'm going to transform your answers into a script for your video.",
                 "is_complete": True
             }
 

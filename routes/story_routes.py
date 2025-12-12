@@ -64,46 +64,16 @@ def submit_answer():
             }), 400
         
         if result.get('is_complete', False):
-            # All questions completed - Generate VideoGen outline for display and editing
-            try:
-                # Generate outline using VideoGen
-                outline_result = story_service.generate_videogen_outline_for_display(session_id)
-                
-                if outline_result['success']:
-                    # Format the outline as a readable storyboard for display
-                    formatted_storyboard = story_service.format_outline_as_storyboard(outline_result['outline'])
-                    
-                    return jsonify({
-                        'success': True,
-                        'message': result['message'],
-                        'storyboard': formatted_storyboard,
-                        'session_complete': True,
-                        'question_number': 4,
-                        'total_questions': 4
-                    })
-                else:
-                    # If outline generation fails, return without storyboard
-                    return jsonify({
-                        'success': True,
-                        'message': result['message'],
-                        'storyboard': None,
-                        'session_complete': True,
-                        'question_number': 4,
-                        'total_questions': 4,
-                        'outline_error': outline_result.get('error', 'Failed to generate outline')
-                    })
-            except Exception as e:
-                print(f"Error generating outline after Q4: {str(e)}")
-                # Return without storyboard if outline generation fails
-                return jsonify({
-                    'success': True,
-                    'message': result['message'],
-                    'storyboard': None,
-                    'session_complete': True,
-                    'question_number': 4,
-                    'total_questions': 4,
-                    'outline_error': str(e)
-                })
+            # All questions completed - Return completion message immediately
+            # Storyboard generation will be triggered by a separate call
+            return jsonify({
+                'success': True,
+                'message': result['message'],
+                'session_complete': True,
+                'question_number': 4,
+                'total_questions': 4,
+                'ready_for_storyboard': True
+            })
         else:
             # Return next question and reaction from GPT
             return jsonify({
@@ -120,6 +90,47 @@ def submit_answer():
         print(f"Error in submit_answer: {str(e)}")
         import traceback
         traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@story_bp.route('/story/generate-storyboard', methods=['POST'])
+def generate_storyboard():
+    """
+    Generate storyboard for a completed session
+    """
+    try:
+        data = request.get_json()
+        session_id = data.get('session_id')
+        
+        if not session_id:
+            return jsonify({
+                'success': False,
+                'message': 'Session ID is required'
+            }), 400
+            
+        # Generate outline using VideoGen
+        outline_result = story_service.generate_videogen_outline_for_display(session_id)
+        
+        if outline_result['success']:
+            # Format the outline as a readable storyboard for display
+            formatted_storyboard = story_service.format_outline_as_storyboard(outline_result['outline'])
+            
+            return jsonify({
+                'success': True,
+                'storyboard': formatted_storyboard,
+                'session_complete': True
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'Failed to generate storyboard',
+                'outline_error': outline_result.get('error', 'Unknown error')
+            }), 500
+            
+    except Exception as e:
+        print(f"Error generating storyboard: {str(e)}")
         return jsonify({
             'success': False,
             'error': str(e)
