@@ -531,9 +531,9 @@ class StoryService:
             print(f"Full outline structure: {json.dumps(outline, indent=2)}")
             
             storyboard_parts = []
-            storyboard_parts.append("**Your video will be ready in about 1 minute**\n")
-            storyboard_parts.append("Here is the script for your video\n")
-            storyboard_parts.append("Take a few seconds to read the script--you will be able to edit later\n")
+            storyboard_parts.append("**Your video will be ready in about 1 minute**\n\n")
+            storyboard_parts.append("Here is the script for your video\n\n")
+            storyboard_parts.append("Take a few seconds to read the script--you will be able to edit later\n\n")
 
             
             # Check for different possible structures
