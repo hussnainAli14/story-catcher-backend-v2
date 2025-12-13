@@ -45,16 +45,26 @@ class VideoStorageService:
                 return {'success': False, 'error': 'Failed to download video'}
             
             # Step 3: Upload to Supabase Storage
-            permanent_url = self._upload_to_supabase(video_data, session_id, api_file_id)
+            upload_result = self._upload_to_supabase(video_data, session_id, api_file_id)
             
-            if not permanent_url:
+            if not upload_result:
                 return {'success': False, 'error': 'Failed to upload to storage'}
+            
+            # Extract URLs
+            if isinstance(upload_result, dict):
+                permanent_url = upload_result.get('public_url')
+                download_url = upload_result.get('download_url')
+            else:
+                # Fallback for legacy behavior (though we just changed it)
+                permanent_url = upload_result
+                download_url = upload_result
             
             print(f"Video successfully stored at: {permanent_url}")
             
             return {
                 'success': True,
                 'permanent_url': permanent_url,
+                'download_url': download_url,
                 'api_file_id': api_file_id
             }
             
@@ -206,7 +216,32 @@ class VideoStorageService:
             public_url = self.supabase.storage.from_(self.storage_bucket).get_public_url(filename)
             
             print(f"Video uploaded successfully: {public_url}")
-            return public_url
+            
+            # Generate a signed URL specifically for downloading (valid for 1 hour)
+            # This forces the Content-Disposition header to 'attachment'
+            try:
+                signed_url_response = self.supabase.storage.from_(self.storage_bucket).create_signed_url(
+                    filename, 
+                    3600, 
+                    {'download': True}
+                )
+                # Handle different response formats from Supabase SDK
+                if isinstance(signed_url_response, dict) and 'signedURL' in signed_url_response:
+                    download_url = signed_url_response['signedURL']
+                elif isinstance(signed_url_response, str):
+                    download_url = signed_url_response
+                else:
+                    # Fallback if response format is unexpected
+                    download_url = public_url
+                    print(f"Unexpected signed URL response format: {signed_url_response}")
+            except Exception as e:
+                print(f"Error generating signed download URL: {e}")
+                download_url = public_url
+
+            return {
+                'public_url': public_url,
+                'download_url': download_url
+            }
             
         except Exception as e:
             print(f"Error uploading to Supabase: {str(e)}")

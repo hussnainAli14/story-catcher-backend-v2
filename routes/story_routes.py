@@ -579,6 +579,7 @@ def process_and_store_video(api_file_id):
             return jsonify({
                 'success': True,
                 'permanent_url': result['permanent_url'],
+                'download_url': result.get('download_url'),
                 'message': 'Video downloaded and stored successfully'
             })
         else:
@@ -653,6 +654,7 @@ def check_and_download_video(api_file_id):
                     'success': True,
                     'ready': True,
                     'permanent_url': result['permanent_url'],
+                    'download_url': result.get('download_url'),
                     'message': 'Video downloaded and stored successfully'
                 })
             else:
