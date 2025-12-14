@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from services.story_service import StoryService
 from services.openai_service import OpenAIService
 from services.videogen_service import VideoGenService
+from services.email_service import EmailService
 from models.story_models import StorySession, Question, StoryResponse
 import json
 
@@ -11,6 +12,7 @@ story_bp = Blueprint('story', __name__)
 story_service = StoryService()
 openai_service = OpenAIService()
 videogen_service = VideoGenService()
+email_service = EmailService()
 
 @story_bp.route('/story/start', methods=['POST'])
 def start_story_session():
@@ -576,6 +578,11 @@ def process_and_store_video(api_file_id):
                 email=email
             )
             
+            # Send email with permanent URL if email is available
+            if email and result.get('permanent_url'):
+                print(f"Sending email to {email} with video link...")
+                email_service.send_video_email(email, result['permanent_url'])
+            
             return jsonify({
                 'success': True,
                 'permanent_url': result['permanent_url'],
@@ -649,6 +656,11 @@ def check_and_download_video(api_file_id):
                     permanent_url=result['permanent_url'],
                     email=email
                 )
+                
+                # Send email with permanent URL if email is available
+                if email and result.get('permanent_url'):
+                    print(f"Sending email to {email} with video link...")
+                    email_service.send_video_email(email, result['permanent_url'])
                 
                 return jsonify({
                     'success': True,
