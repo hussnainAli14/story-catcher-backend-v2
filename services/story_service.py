@@ -354,7 +354,7 @@ class StoryService:
             import traceback
             traceback.print_exc()
             return {'success': False, 'error': str(e)}
-    
+
     def parse_storyboard_to_outline(self, storyboard_text: str) -> dict:
         """
         Parse edited storyboard text back into VideoGen outline format
@@ -378,18 +378,20 @@ class StoryService:
                 # Clean up the text - remove extra whitespace and newlines
                 text = match.strip()
                 
-                # Skip if this is just a title line like "Scene 1: The Moment" or "Scene 2: The Impact"
-                # These are labels, not actual content (short lines with just scene prefixes)
-                if text and not re.match(r'^Scene\s+\d+:\s*.{0,30}$', text):
-                    # Remove any remaining "Scene X:" prefixes from the text
-                    text = re.sub(r'^Scene\s+\d+:\s*', '', text)
-                    text = text.strip()
-                    
-                    if text:  # Only add if there's actual content after cleaning
-                        sections.append({'text': text})
+                # Updated regex to handle optional colon and other separators
+                # Skip if this is just a title line like "Scene 1" or "Scene 1: The Moment"
+                if text and not re.match(r'^Scene\s+\d+[:\.\s-]*.*$', text, re.IGNORECASE) and len(text) < 50:
+                     pass
+
+                # Better approach: Always try to strip the prefix, then check if anything remains
+                clean_text = re.sub(r'^Scene\s+\d+[:\.\s-]*', '', text, flags=re.IGNORECASE).strip()
+                
+                if clean_text:
+                    sections.append({'text': clean_text})
             
-            # If no scenes found, try to extract any text content
-            if not sections:
+            # If no scenes found via regex, try to extract any text content
+            # Only do this if we didn't find any scene markers (matches), otherwise we assume the user intended scenes but left them empty
+            if not sections and not matches:
                 # Remove all markdown formatting and extract plain text
                 lines = storyboard_text.split('\n')
                 content_lines = []
@@ -397,15 +399,15 @@ class StoryService:
                     line = line.strip()
                     # Skip markdown headers, tips, scene labels, and empty lines
                     if line and not line.startswith('**Storyboard:') and not line.startswith('*This is') and not line.startswith('💡'):
-                        # Skip lines that are just scene titles (e.g., "Scene 1: The Moment")
-                        if not re.match(r'^Scene\s+\d+:\s*.{0,30}$', line):
-                            # Remove markdown formatting
-                            line = line.replace('**', '').replace('*', '')
-                            # Remove "Scene X:" prefix if present
-                            line = re.sub(r'^Scene\s+\d+:\s*', '', line)
-                            line = line.strip()
-                            if line:
-                                content_lines.append(line)
+                        # Remove markdown formatting
+                        line = line.replace('**', '').replace('*', '')
+                        
+                        # Remove "Scene X" prefix if present (robust regex)
+                        line = re.sub(r'^Scene\s+\d+[:\.\s-]*', '', line, flags=re.IGNORECASE)
+                        line = line.strip()
+                        
+                        if line:
+                            content_lines.append(line)
                 
                 if content_lines:
                     # Combine into sections (split by double newlines if present)
@@ -415,7 +417,11 @@ class StoryService:
             
             # Ensure we have at least one section
             if not sections:
-                sections = [{'text': storyboard_text}]
+                # If we had matches but they were all empty, return empty list (don't fallback to raw text)
+                if matches:
+                    pass
+                else:
+                    sections = [{'text': storyboard_text}]
             
             print(f"\u2705 Parsed storyboard into {len(sections)} sections (filtered out title-only scenes)")
             for i, section in enumerate(sections, 1):
@@ -428,7 +434,7 @@ class StoryService:
             print(f"Error parsing storyboard: {str(e)}")
             # Fallback: treat entire text as one section
             return {'sections': [{'text': storyboard_text}]}
-    
+
     def _split_text_into_scenes(self, text: str, target_scenes: int = 2) -> list:
         """
         Split a long narrative text into target_scenes distinct scenes based on natural breaks
