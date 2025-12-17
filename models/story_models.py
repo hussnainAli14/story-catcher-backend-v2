@@ -28,6 +28,7 @@ class StorySession:
     is_complete: bool
     generated_story: Optional[str] = None
     user_email: Optional[str] = None
+    last_accessed: Optional[datetime] = None
     
     def to_dict(self):
         return {
@@ -37,7 +38,8 @@ class StorySession:
             'current_question': self.current_question,
             'is_complete': self.is_complete,
             'generated_story': self.generated_story,
-            'user_email': self.user_email
+            'user_email': self.user_email,
+            'last_accessed': self.last_accessed.isoformat() if self.last_accessed else None
         }
 
 @dataclass

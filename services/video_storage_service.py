@@ -27,6 +27,7 @@ class VideoStorageService:
         Returns:
             Dict with success status and permanent URL
         """
+        temp_file_path = None
         try:
             print(f"Starting video download and storage for apiFileId: {api_file_id}")
             
@@ -38,14 +39,14 @@ class VideoStorageService:
             
             print(f"Got video URL from VideoGen: {video_url[:100]}...")
             
-            # Step 2: Download video to memory
-            video_data = self._download_video(video_url)
+            # Step 2: Download video to temporary file (streamed)
+            temp_file_path = self._download_video_to_temp_file(video_url)
             
-            if not video_data:
+            if not temp_file_path:
                 return {'success': False, 'error': 'Failed to download video'}
             
-            # Step 3: Upload to Supabase Storage
-            upload_result = self._upload_to_supabase(video_data, session_id, api_file_id)
+            # Step 3: Upload to Supabase Storage from file
+            upload_result = self._upload_file_to_supabase(temp_file_path, session_id, api_file_id)
             
             if not upload_result:
                 return {'success': False, 'error': 'Failed to upload to storage'}
@@ -55,7 +56,7 @@ class VideoStorageService:
                 permanent_url = upload_result.get('public_url')
                 download_url = upload_result.get('download_url')
             else:
-                # Fallback for legacy behavior (though we just changed it)
+                # Fallback for legacy behavior
                 permanent_url = upload_result
                 download_url = upload_result
             
@@ -73,6 +74,14 @@ class VideoStorageService:
             import traceback
             traceback.print_exc()
             return {'success': False, 'error': str(e)}
+        finally:
+            # Clean up temporary file
+            if temp_file_path and os.path.exists(temp_file_path):
+                try:
+                    os.remove(temp_file_path)
+                    print(f"Cleaned up temporary file: {temp_file_path}")
+                except Exception as e:
+                    print(f"Error cleaning up temporary file: {e}")
     
     def _get_video_url_from_videogen(self, api_file_id: str) -> Optional[str]:
         """Get the actual video URL from VideoGen API"""
@@ -133,24 +142,38 @@ class VideoStorageService:
             traceback.print_exc()
             return None
     
-    def _download_video(self, video_url: str) -> Optional[bytes]:
-        """Download video from URL to memory with retry logic"""
+    def _download_video_to_temp_file(self, video_url: str) -> Optional[str]:
+        """Download video from URL to a temporary file with retry logic"""
+        import tempfile
+        
         for attempt in range(self.max_download_retries):
+            temp_file = None
             try:
                 print(f"Downloading video from: {video_url[:100]}... (Attempt {attempt + 1}/{self.max_download_retries})")
                 
+                # Create a temporary file
+                temp_fd, temp_path = tempfile.mkstemp(suffix='.mp4')
+                os.close(temp_fd)  # Close the file descriptor, we'll open it with requests
+                
                 # Stream download to handle large files
-                response = requests.get(video_url, stream=True, timeout=300)
-                response.raise_for_status()
+                with requests.get(video_url, stream=True, timeout=300) as response:
+                    response.raise_for_status()
+                    
+                    # Write to file in chunks
+                    with open(temp_path, 'wb') as f:
+                        for chunk in response.iter_content(chunk_size=8192):
+                            if chunk:
+                                f.write(chunk)
                 
-                # Read video data
-                video_data = response.content
-                
-                print(f"Downloaded video: {len(video_data)} bytes ({len(video_data) / (1024 * 1024):.2f} MB)")
-                return video_data
+                file_size = os.path.getsize(temp_path)
+                print(f"Downloaded video to {temp_path}: {file_size} bytes ({file_size / (1024 * 1024):.2f} MB)")
+                return temp_path
                 
             except requests.exceptions.Timeout:
                 print(f"Video download timed out (attempt {attempt + 1})")
+                if temp_path and os.path.exists(temp_path):
+                    os.remove(temp_path)
+                    
                 if attempt < self.max_download_retries - 1:
                     wait_time = (attempt + 1) * 5  # Exponential backoff
                     print(f"Retrying in {wait_time} seconds...")
@@ -158,8 +181,11 @@ class VideoStorageService:
                 else:
                     print("Max retries reached. Download failed.")
                     return None
-            except requests.exceptions.RequestException as e:
+            except Exception as e:
                 print(f"Error downloading video: {str(e)} (attempt {attempt + 1})")
+                if temp_path and os.path.exists(temp_path):
+                    os.remove(temp_path)
+                    
                 if attempt < self.max_download_retries - 1:
                     wait_time = (attempt + 1) * 5
                     print(f"Retrying in {wait_time} seconds...")
@@ -167,23 +193,21 @@ class VideoStorageService:
                 else:
                     print("Max retries reached. Download failed.")
                     return None
-            except Exception as e:
-                print(f"Unexpected error downloading video: {str(e)}")
-                return None
         
         return None
     
-    def _upload_to_supabase(self, video_data: bytes, session_id: str, api_file_id: str) -> Optional[str]:
-        """Upload video to Supabase Storage"""
+    def _upload_file_to_supabase(self, file_path: str, session_id: str, api_file_id: str) -> Optional[str]:
+        """Upload video file to Supabase Storage"""
         try:
             # Create filename with timestamp
             from datetime import datetime
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             filename = f"{session_id}_{timestamp}_{api_file_id}.mp4"
             
+            file_size = os.path.getsize(file_path)
             print(f"Uploading to Supabase Storage: {filename}")
             print(f"Bucket: {self.storage_bucket}")
-            print(f"File size: {len(video_data) / (1024 * 1024):.2f} MB")
+            print(f"File size: {file_size / (1024 * 1024):.2f} MB")
             
             # Check if file already exists
             try:
@@ -198,11 +222,12 @@ class VideoStorageService:
             
             # Upload to Supabase Storage
             try:
-                result = self.supabase.storage.from_(self.storage_bucket).upload(
-                    path=filename,
-                    file=video_data,
-                    file_options={"content-type": "video/mp4", "upsert": "true"}
-                )
+                with open(file_path, 'rb') as f:
+                    result = self.supabase.storage.from_(self.storage_bucket).upload(
+                        path=filename,
+                        file=f,
+                        file_options={"content-type": "video/mp4", "upsert": "true"}
+                    )
                 print(f"Upload result: {result}")
             except Exception as upload_error:
                 print(f"Upload error: {str(upload_error)}")
@@ -218,7 +243,6 @@ class VideoStorageService:
             print(f"Video uploaded successfully: {public_url}")
             
             # Generate a signed URL specifically for downloading (valid for 1 hour)
-            # This forces the Content-Disposition header to 'attachment'
             try:
                 signed_url_response = self.supabase.storage.from_(self.storage_bucket).create_signed_url(
                     filename, 

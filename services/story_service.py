@@ -4,7 +4,7 @@ from typing import Dict, List, Optional
 from models.story_models import Question, Answer, StorySession
 from services.openai_service import OpenAIService
 from services.videogen_service import VideoGenService
-from datetime import datetime
+from datetime import datetime, timedelta
 
 class StoryService:
     def __init__(self):
@@ -23,8 +23,35 @@ class StoryService:
         # Conversation history for GPT context
         self.conversation_history = {}
 
+    def cleanup_old_sessions(self, max_age_hours: int = 24):
+        """Remove sessions older than max_age_hours to prevent memory leaks"""
+        try:
+            current_time = datetime.now()
+            cutoff_time = current_time - timedelta(hours=max_age_hours)
+            
+            sessions_to_remove = []
+            
+            for session_id, session in self.sessions.items():
+                # Use last_accessed if available, otherwise created_at
+                last_active = session.last_accessed or session.created_at
+                
+                if last_active < cutoff_time:
+                    sessions_to_remove.append(session_id)
+            
+            if sessions_to_remove:
+                print(f"Cleaning up {len(sessions_to_remove)} old sessions...")
+                for session_id in sessions_to_remove:
+                    self.clear_session(session_id)
+                print(f"Cleanup complete. Remaining sessions: {len(self.sessions)}")
+                
+        except Exception as e:
+            print(f"Error during session cleanup: {e}")
+
     def start_session(self) -> Dict:
         """Start a new story session with dynamic GPT interaction"""
+        # Run cleanup before starting new session
+        self.cleanup_old_sessions()
+        
         session_id = str(uuid.uuid4())
         
         # Initialize conversation history
@@ -36,7 +63,8 @@ class StoryService:
             created_at=datetime.now(),
             answers=[],
             current_question=1,
-            is_complete=False
+            is_complete=False,
+            last_accessed=datetime.now()
         )
         
         self.sessions[session_id] = session
@@ -54,6 +82,8 @@ class StoryService:
             return {"error": "Session not found"}
         
         session = self.sessions[session_id]
+        session.last_accessed = datetime.now()  # Update access time
+        
         current_question_number = session.current_question
         
         if current_question_number > 4:
@@ -154,7 +184,10 @@ class StoryService:
 
     def get_session(self, session_id: str) -> Optional[StorySession]:
         """Get session by ID"""
-        return self.sessions.get(session_id)
+        session = self.sessions.get(session_id)
+        if session:
+            session.last_accessed = datetime.now()
+        return session
 
     def get_session_summary(self, session_id: str) -> Optional[Dict]:
         """Get session summary for storyboard generation"""
@@ -611,7 +644,6 @@ class StoryService:
                 # Fallback if structure is different
                 storyboard_parts.append("\n" + str(outline))
             
-
             
             result = "\n".join(storyboard_parts)
             print(f"=== FORMATTED STORYBOARD (length: {len(result)}) ===")
