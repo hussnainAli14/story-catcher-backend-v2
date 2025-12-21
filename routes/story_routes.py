@@ -704,3 +704,36 @@ def health_check():
         'status': 'healthy',
         'message': 'Story Catcher Backend V2 is running'
     })
+
+@story_bp.route('/video/proxy-download', methods=['GET'])
+def proxy_download_video():
+    """
+    Proxy a video download to bypass CORS or force download
+    """
+    try:
+        url = request.args.get('url')
+        if not url:
+            return jsonify({'success': False, 'error': 'URL is required'}), 400
+            
+        import requests
+        from flask import Response, stream_with_context
+        
+        # Stream the content
+        # Use a session to potentially reuse connections, though for one-off it's fine
+        req = requests.get(url, stream=True, timeout=300)
+        
+        if req.status_code != 200:
+            print(f"Proxy download failed upstream: {req.status_code}")
+            return jsonify({'success': False, 'error': f"Upstream error: {req.status_code}"}), req.status_code
+            
+        def generate():
+            for chunk in req.iter_content(chunk_size=4096):
+                yield chunk
+                
+        return Response(stream_with_context(generate()), headers={
+            'Content-Type': 'video/mp4',
+            'Content-Disposition': 'attachment; filename="story-video.mp4"'
+        })
+    except Exception as e:
+        print(f"Error in proxy_download_video: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500

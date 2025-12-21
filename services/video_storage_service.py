@@ -247,7 +247,7 @@ class VideoStorageService:
                 signed_url_response = self.supabase.storage.from_(self.storage_bucket).create_signed_url(
                     filename, 
                     3600, 
-                    {'download': True}
+                    {'download': filename}
                 )
                 # Handle different response formats from Supabase SDK
                 if isinstance(signed_url_response, dict) and 'signedURL' in signed_url_response:
