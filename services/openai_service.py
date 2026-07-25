@@ -24,6 +24,58 @@ class OpenAIService:
             self.client = openai.OpenAI(api_key=self.api_key)
         return self.client
     
+    def generate_outline_from_prompt(self, prompt: str) -> Dict:
+        """
+        Generate a 2-scene narrative outline using GPT.
+        Replaces the old VideoGen prompt-to-outline API.
+
+        Returns:
+            Dict: {'sections': [{'text': '...'}, {'text': '...'}]}
+        """
+        try:
+            client = self._get_client()
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are a master storyteller. Write exactly 2 rich narrative paragraphs "
+                            "based on the instructions given. Each paragraph should be 5-6 sentences "
+                            "of vivid, emotional, first-person storytelling. "
+                            "Return ONLY the two paragraphs separated by a single blank line, "
+                            "with no labels, numbers, or extra commentary."
+                        )
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                max_tokens=600,
+                temperature=0.7
+            )
+
+            text = response.choices[0].message.content.strip()
+            paragraphs = [p.strip() for p in text.split('\n\n') if p.strip()]
+
+            if len(paragraphs) < 2:
+                sentences = text.split('. ')
+                mid = max(1, len(sentences) // 2)
+                para1 = '. '.join(sentences[:mid]).strip()
+                if not para1.endswith('.'):
+                    para1 += '.'
+                para2 = '. '.join(sentences[mid:]).strip()
+                paragraphs = [para1, para2] if para2 else [para1]
+
+            sections = [{'text': p} for p in paragraphs[:2]]
+            print(f"Generated outline with {len(sections)} sections via GPT")
+            return {'sections': sections}
+
+        except Exception as e:
+            print(f"Error generating outline with GPT: {e}")
+            return {'sections': [{'text': prompt[:500]}]}
+
     def create_videogen_prompt_from_answers(self, formatted_answers: List[Dict]) -> str:
         """
         Create a concise prompt for VideoGen's prompt-to-outline API from user's answers

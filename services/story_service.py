@@ -370,9 +370,9 @@ class StoryService:
             videogen_prompt = self.openai_service.create_videogen_prompt_from_answers(formatted_answers)
             print(f"Created VideoGen prompt for outline")
             
-            # Generate outline from prompt
-            outline = self.videogen_service.generate_outline_from_prompt(videogen_prompt)
-            print(f"Generated outline from VideoGen")
+            # Generate outline using GPT (VideoGen no longer has a prompt-to-outline API)
+            outline = self.openai_service.generate_outline_from_prompt(videogen_prompt)
+            print(f"Generated outline from GPT")
             
             # Store the outline in the session for later video generation
             session.generated_story = str(outline)  # Store as string for compatibility
@@ -703,9 +703,9 @@ class StoryService:
                 videogen_prompt = self.openai_service.create_videogen_prompt_from_answers(formatted_answers)
                 print(f"Created VideoGen prompt: {videogen_prompt[:200]}...")
                 
-                # Step 2: Generate outline from prompt
-                outline = self.videogen_service.generate_outline_from_prompt(videogen_prompt)
-                print(f"Generated outline from VideoGen")
+                # Step 2: Generate outline using GPT (VideoGen no longer has a prompt-to-outline API)
+                outline = self.openai_service.generate_outline_from_prompt(videogen_prompt)
+                print(f"Generated outline from GPT")
                 
                 # Save the outline
                 session.generated_story = str(outline)
