@@ -373,20 +373,51 @@ class StoryService:
             # Generate outline using GPT (VideoGen no longer has a prompt-to-outline API)
             outline = self.openai_service.generate_outline_from_prompt(videogen_prompt)
             print(f"Generated outline from GPT")
-            
+
+            # Truncate the outline so the storyboard matches exactly what VideoGen will narrate
+            outline = self._truncate_outline_for_video(outline)
+            print(f"Outline truncated to match video duration")
+
             # Store the outline in the session for later video generation
             session.generated_story = str(outline)  # Store as string for compatibility
-            
+
             return {
                 'success': True,
                 'outline': outline
             }
-            
+
         except Exception as e:
             print(f"Error generating outline for display: {str(e)}")
             import traceback
             traceback.print_exc()
             return {'success': False, 'error': str(e)}
+
+    def _truncate_outline_for_video(self, outline: dict) -> dict:
+        """
+        Truncate outline sections so the storyboard exactly matches what VideoGen will narrate.
+        Splits the truncated script back into 2 natural sections at a sentence boundary.
+        """
+        sections = outline.get('sections', [])
+        full_script = ' '.join(s.get('text', '').strip() for s in sections if s.get('text'))
+        truncated = self.videogen_service._truncate_script_for_duration(full_script)
+
+        sentences = [s.strip() for s in truncated.split('. ') if s.strip()]
+        mid = max(1, len(sentences) // 2)
+
+        section1 = '. '.join(sentences[:mid])
+        if section1 and not section1.endswith('.'):
+            section1 += '.'
+        section2 = '. '.join(sentences[mid:])
+        if section2 and not section2.endswith('.'):
+            section2 += '.'
+
+        result_sections = [{'text': section1}]
+        if section2:
+            result_sections.append({'text': section2})
+
+        total_words = len(truncated.split())
+        print(f"Truncated outline: {total_words} words across {len(result_sections)} sections")
+        return {'sections': result_sections}
 
     def parse_storyboard_to_outline(self, storyboard_text: str) -> dict:
         """

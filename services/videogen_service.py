@@ -60,14 +60,17 @@ class VideoGenService:
             truncated_script = self._truncate_script_for_duration(script)
             url = f"{self.base_url}/workflows/script-to-video"
 
+            word_count = len(truncated_script.split())
             print(f"VideoGen API Key: {self.api_key[:10]}..." if self.api_key else "No API key")
-            print(f"Script length: {len(truncated_script)} characters")
+            print(f"Script: {word_count} words, {len(truncated_script)} chars")
+            print(f"SCRIPT CONTENT: {truncated_script}")
             print(f"Sending request to VideoGen API: {url}")
 
             payload = {
                 "script": truncated_script,
                 "visualStyle": {"type": "STOCK"},
-                "quality": "HIGH"
+                "quality": "HIGH",
+                "aspectRatio": {"width": 9, "height": 16}
             }
 
             response = requests.post(url, headers=self.headers, json=payload, timeout=30)
@@ -248,9 +251,9 @@ class VideoGenService:
             print(f"Error getting export status: {e}")
             return {'status': 'unknown'}
 
-    def _truncate_script_for_duration(self, script: str, max_words: int = 150) -> str:
+    def _truncate_script_for_duration(self, script: str, max_words: int = 120) -> str:
         """
-        Truncate script to approximately 1 minute of speech (~150 words)
+        Truncate script to approximately 55-60 seconds of speech (~120 words at 120wpm)
         while preserving complete sentences.
         """
         words = script.split()
@@ -389,7 +392,7 @@ class VideoGenService:
         return self._create_complete_narrative(scenes, title, closing_message)
 
     def _create_complete_narrative(self, scenes: list, title: str, closing_message: str = None) -> str:
-        target_words = 160
+        target_words = 120
 
         if len(scenes) <= 3:
             return self._create_detailed_narrative(scenes, title, target_words, closing_message)

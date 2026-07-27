@@ -40,9 +40,10 @@ class OpenAIService:
                     {
                         "role": "system",
                         "content": (
-                            "You are a master storyteller. Write exactly 2 rich narrative paragraphs "
-                            "based on the instructions given. Each paragraph should be 5-6 sentences "
-                            "of vivid, emotional, first-person storytelling. "
+                            "You are a master storyteller. Write exactly 2 narrative paragraphs "
+                            "based on the instructions given. Each paragraph should be 3-4 sentences "
+                            "of vivid, emotional, first-person storytelling. Keep each paragraph "
+                            "between 55-65 words. The two paragraphs combined must be 110-120 words total. "
                             "Return ONLY the two paragraphs separated by a single blank line, "
                             "with no labels, numbers, or extra commentary."
                         )
